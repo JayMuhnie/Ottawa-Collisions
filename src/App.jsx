@@ -2,7 +2,11 @@ import { useState, useCallback, useMemo } from "react";
 import CollisionMap from "./CollisionMap";
 import StatsPanel from "./StatsPanel";
 import FilterBar from "./FilterBar";
-import { fetchCollisionsNear, geocodeAddress, getUniqueYears, getUniqueTypes, applyFilters } from "./utils";
+import {
+  fetchCollisionsNear, fetchCollisionsInBbox, geocodeAddress,
+  getUniqueYears, getUniqueTypes, applyFilters,
+  pointInPolygon, polygonBbox,
+} from "./utils";
 
 const accent = "#00b4d8";
 const border = "rgba(255,255,255,0.08)";
@@ -15,16 +19,26 @@ const RADIUS_PRESETS = [
   { label: "5km", km: 5 },
 ];
 
+// Selection mode: "radius" or "polygon"
 export default function App() {
   const [collisions, setCollisions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Radius mode state
   const [searchMarker, setSearchMarker] = useState(null);
   const [radiusKm, setRadiusKm] = useState(0.5);
   const [radiusInput, setRadiusInput] = useState("500");
   const [addressInput, setAddressInput] = useState("");
   const [geocoding, setGeocoding] = useState(false);
   const [locationLabel, setLocationLabel] = useState("");
+
+  // Polygon mode state
+  const [selectionMode, setSelectionMode] = useState("radius"); // "radius" | "polygon"
+  const [drawMode, setDrawMode] = useState(false);   // actively drawing
+  const [polygon, setPolygon] = useState(null);      // committed polygon [[lat,lng],...]
+
+  // Shared UI state
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [highlightGeoId, setHighlightGeoId] = useState(null);
   const [filters, setFilters] = useState({ years: [], types: [], severity: [], involvement: [] });
@@ -33,22 +47,84 @@ export default function App() {
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
   const filteredCollisions = useMemo(() => applyFilters(collisions, filters), [collisions, filters]);
 
+  const resetState = () => {
+    setFilters({ years: [], types: [], severity: [], involvement: [] });
+    setHighlightGeoId(null);
+  };
+
+  // ── Load via radius ───────────────────────────────────────────────
   const loadCollisions = useCallback(async (lat, lng, km) => {
     setLoading(true);
     setError(null);
-    setFilters({ years: [], types: [], severity: [], involvement: [] });
-    setHighlightGeoId(null);
+    resetState();
     try {
-      const features = await fetchCollisionsNear(lat, lng, km);
-      setCollisions(features);
+      setCollisions(await fetchCollisionsNear(lat, lng, km));
     } catch (err) {
       setError(`Failed to load data: ${err.message}`);
       setCollisions([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // eslint-disable-line
 
+  // ── Load via polygon ──────────────────────────────────────────────
+  const loadCollisionsInPolygon = useCallback(async (poly) => {
+    setLoading(true);
+    setError(null);
+    resetState();
+    try {
+      const { minLat, maxLat, minLng, maxLng } = polygonBbox(poly);
+      const bbox = await fetchCollisionsInBbox(minLng, minLat, maxLng, maxLat);
+      // Client-side filter to exact polygon boundary
+      const inside = bbox.filter(f => {
+        const coords = f.geometry?.coordinates;
+        if (!coords) return false;
+        return pointInPolygon([coords[1], coords[0]], poly);
+      });
+      setCollisions(inside);
+    } catch (err) {
+      setError(`Failed to load data: ${err.message}`);
+      setCollisions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // eslint-disable-line
+
+  // ── Polygon drawn callback ────────────────────────────────────────
+  const handlePolygonComplete = useCallback((verts) => {
+    setPolygon(verts);
+    setDrawMode(false);
+    setSearchMarker(null);
+    setLocationLabel(`Polygon · ${verts.length} vertices`);
+    loadCollisionsInPolygon(verts);
+  }, [loadCollisionsInPolygon]);
+
+  // ── Switch selection modes ────────────────────────────────────────
+  const switchToRadius = () => {
+    setSelectionMode("radius");
+    setDrawMode(false);
+    setPolygon(null);
+    setCollisions([]);
+    setLocationLabel("");
+  };
+
+  const switchToPolygon = () => {
+    setSelectionMode("polygon");
+    setSearchMarker(null);
+    setPolygon(null);
+    setCollisions([]);
+    setLocationLabel("");
+    setDrawMode(true);  // start drawing immediately
+  };
+
+  const clearPolygon = () => {
+    setPolygon(null);
+    setCollisions([]);
+    setLocationLabel("");
+    setDrawMode(true);  // let them draw a new one
+  };
+
+  // ── Radius helpers ────────────────────────────────────────────────
   const applyRadius = (km) => {
     setRadiusKm(km);
     setRadiusInput(String(Math.round(km * 1000)));
@@ -64,10 +140,11 @@ export default function App() {
   };
 
   const handleMapClick = useCallback((lat, lng) => {
+    if (selectionMode !== "radius") return;
     setSearchMarker({ lat, lng });
     setLocationLabel(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     loadCollisions(lat, lng, radiusKm);
-  }, [radiusKm, loadCollisions]);
+  }, [selectionMode, radiusKm, loadCollisions]);
 
   const handleSearch = useCallback(async () => {
     if (!addressInput.trim()) return;
@@ -77,6 +154,8 @@ export default function App() {
       const { lat, lng, label } = await geocodeAddress(addressInput);
       setSearchMarker({ lat, lng });
       setLocationLabel(label);
+      setSelectionMode("radius");
+      setPolygon(null);
       loadCollisions(lat, lng, radiusKm);
     } catch {
       setError("Address not found. Try a more specific Ottawa address or intersection.");
@@ -85,17 +164,19 @@ export default function App() {
     }
   }, [addressInput, radiusKm, loadCollisions]);
 
-  const radiusLabel = radiusKm < 1 ? `${Math.round(radiusKm * 1000)}m` : `${radiusKm % 1 === 0 ? radiusKm : radiusKm.toFixed(2)}km`;
   const isCustomRadius = !RADIUS_PRESETS.some(p => p.km === radiusKm);
+  const radiusLabel = radiusKm < 1 ? `${Math.round(radiusKm * 1000)}m` : `${radiusKm % 1 === 0 ? radiusKm : radiusKm.toFixed(2)}km`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0d0d1a" }}>
-      {/* Header */}
+
+      {/* ── Header ───────────────────────────────────────────────── */}
       <header style={{
         background: "#111124", borderBottom: `1px solid ${border}`,
         padding: "10px 18px", display: "flex", alignItems: "center",
         gap: 14, flexShrink: 0, flexWrap: "wrap",
       }}>
+        {/* Brand */}
         <div style={{ marginRight: 8 }}>
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.07em", color: accent }}>
             OTTAWA COLLISION ANALYSIS
@@ -116,7 +197,7 @@ export default function App() {
             style={{
               background: "rgba(255,255,255,0.06)", border: `1px solid ${border}`,
               borderRadius: 6, color: "#ecf0f1", padding: "7px 12px",
-              fontSize: 13, width: 250, outline: "none",
+              fontSize: 13, width: 240, outline: "none",
             }}
             onFocus={e => e.target.style.borderColor = accent}
             onBlur={e => e.target.style.borderColor = border}
@@ -125,48 +206,79 @@ export default function App() {
             background: accent, border: "none", borderRadius: 6, color: "#000",
             padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
             letterSpacing: "0.06em", opacity: geocoding ? 0.7 : 1,
+          }}>{geocoding ? "…" : "SEARCH"}</button>
+        </div>
+
+        {/* Mode toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "3px 4px", border: `1px solid ${border}` }}>
+          <button onClick={switchToRadius} style={{
+            background: selectionMode === "radius" ? accent : "none",
+            border: "none", borderRadius: 4, color: selectionMode === "radius" ? "#000" : "#bdc3c7",
+            padding: "4px 10px", fontSize: 11, cursor: "pointer",
+            fontWeight: selectionMode === "radius" ? 700 : 400,
+          }}>⊙ Radius</button>
+          <button onClick={selectionMode === "polygon" ? (drawMode ? undefined : clearPolygon) : switchToPolygon} style={{
+            background: selectionMode === "polygon" ? (drawMode ? "#2ecc71" : "#f1c40f") : "none",
+            border: "none", borderRadius: 4,
+            color: selectionMode === "polygon" ? "#000" : "#bdc3c7",
+            padding: "4px 10px", fontSize: 11, cursor: "pointer",
+            fontWeight: selectionMode === "polygon" ? 700 : 400,
           }}>
-            {geocoding ? "…" : "SEARCH"}
+            {selectionMode === "polygon" && drawMode ? "✏ Drawing…" : "⬡ Polygon"}
           </button>
         </div>
 
-        {/* Radius */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", fontFamily: "'Space Mono', monospace" }}>RADIUS</span>
-          {RADIUS_PRESETS.map(({ label, km }) => (
-            <button key={km} onClick={() => applyRadius(km)} style={{
-              background: !isCustomRadius && radiusKm === km ? accent : "rgba(255,255,255,0.06)",
-              border: "none", borderRadius: 4,
-              color: !isCustomRadius && radiusKm === km ? "#000" : "#bdc3c7",
-              padding: "5px 8px", fontSize: 11, cursor: "pointer",
-              fontWeight: !isCustomRadius && radiusKm === km ? 700 : 400,
-            }}>{label}</button>
-          ))}
-          {/* Custom metres input */}
-          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-            <input
-              value={radiusInput}
-              onChange={e => setRadiusInput(e.target.value)}
-              onBlur={handleRadiusCommit}
-              onKeyDown={e => e.key === "Enter" && handleRadiusCommit()}
-              placeholder="e.g. 750"
-              title="Custom radius in metres — press Enter or click away to apply"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: `1px solid ${isCustomRadius ? accent : border}`,
-                borderRadius: 4, color: "#ecf0f1",
-                padding: "4px 6px", fontSize: 11, width: 58,
-                outline: "none", textAlign: "right",
-                fontFamily: "'Space Mono', monospace",
-              }}
-              onFocus={e => e.target.style.borderColor = accent}
-            />
-            <span style={{ fontSize: 10, color: "#7f8c8d" }}>m</span>
+        {/* Radius controls — only in radius mode */}
+        {selectionMode === "radius" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", fontFamily: "'Space Mono', monospace" }}>RADIUS</span>
+            {RADIUS_PRESETS.map(({ label, km }) => (
+              <button key={km} onClick={() => applyRadius(km)} style={{
+                background: !isCustomRadius && radiusKm === km ? accent : "rgba(255,255,255,0.06)",
+                border: "none", borderRadius: 4,
+                color: !isCustomRadius && radiusKm === km ? "#000" : "#bdc3c7",
+                padding: "5px 8px", fontSize: 11, cursor: "pointer",
+                fontWeight: !isCustomRadius && radiusKm === km ? 700 : 400,
+              }}>{label}</button>
+            ))}
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <input
+                value={radiusInput}
+                onChange={e => setRadiusInput(e.target.value)}
+                onBlur={handleRadiusCommit}
+                onKeyDown={e => e.key === "Enter" && handleRadiusCommit()}
+                placeholder="e.g. 750"
+                title="Custom radius in metres"
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  border: `1px solid ${isCustomRadius ? accent : border}`,
+                  borderRadius: 4, color: "#ecf0f1",
+                  padding: "4px 6px", fontSize: 11, width: 58,
+                  outline: "none", textAlign: "right",
+                  fontFamily: "'Space Mono', monospace",
+                }}
+                onFocus={e => e.target.style.borderColor = accent}
+              />
+              <span style={{ fontSize: 10, color: "#7f8c8d" }}>m</span>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Polygon hint */}
+        {selectionMode === "polygon" && drawMode && (
+          <div style={{ fontSize: 11, color: "#2ecc71", fontFamily: "'Space Mono', monospace" }}>
+            Click to add points · Double-click to finish
+          </div>
+        )}
+        {selectionMode === "polygon" && !drawMode && polygon && (
+          <button onClick={clearPolygon} style={{
+            background: "none", border: `1px solid ${border}`, borderRadius: 4,
+            color: "#7f8c8d", padding: "4px 10px", fontSize: 11, cursor: "pointer",
+          }}>✏ Redraw</button>
+        )}
       </header>
 
-      {/* Error */}
+      {/* ── Error ────────────────────────────────────────────────── */}
       {error && (
         <div style={{
           background: "rgba(231,76,60,0.12)", borderBottom: "1px solid rgba(231,76,60,0.25)",
@@ -178,7 +290,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Location bar */}
+      {/* ── Location bar ─────────────────────────────────────────── */}
       {locationLabel && (
         <div style={{
           background: "rgba(0,180,216,0.07)", borderBottom: "1px solid rgba(0,180,216,0.15)",
@@ -186,13 +298,12 @@ export default function App() {
         }}>
           <span>📍 {locationLabel}</span>
           <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
-          <span>{radiusLabel} radius</span>
-          <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
+          {selectionMode === "radius" && <span>{radiusLabel} radius ·</span>}
           <span><b>{filteredCollisions.length.toLocaleString()}</b> collisions</span>
         </div>
       )}
 
-      {/* Filter bar */}
+      {/* ── Filter bar ───────────────────────────────────────────── */}
       {collisions.length > 0 && (
         <FilterBar
           allYears={allYears}
@@ -206,16 +317,19 @@ export default function App() {
         />
       )}
 
-      {/* Main */}
+      {/* ── Main ─────────────────────────────────────────────────── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <div style={{ flex: 1, position: "relative" }}>
           <CollisionMap
             collisions={filteredCollisions}
             onMapClick={handleMapClick}
-            searchMarker={searchMarker}
+            searchMarker={selectionMode === "radius" ? searchMarker : null}
             radiusKm={radiusKm}
             showHeatmap={showHeatmap}
             highlightGeoId={highlightGeoId}
+            drawMode={drawMode}
+            onPolygonComplete={handlePolygonComplete}
+            polygon={selectionMode === "polygon" ? polygon : null}
           />
 
           {/* Dot legend */}
@@ -239,7 +353,9 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <span style={{ fontSize: 13 }}>🚲</span><span style={{ color: "#9b59b6" }}>Cyclist involved</span>
                 </div>
-                <div style={{ color: "#7f8c8d", fontSize: 10 }}>🟡 Search point · click map to query</div>
+                <div style={{ color: "#7f8c8d", fontSize: 10 }}>
+                  {selectionMode === "radius" ? "🟡 Search point · click map to query" : "⬡ Polygon mode active"}
+                </div>
               </div>
             </div>
           )}
@@ -262,15 +378,18 @@ export default function App() {
           )}
 
           {/* Empty state */}
-          {!searchMarker && (
+          {!searchMarker && !polygon && !loading && (
             <div style={{
               position: "absolute", top: "50%", left: "50%",
               transform: "translate(-50%, -50%)",
               background: "rgba(13,13,26,0.88)", border: `1px solid ${border}`,
-              borderRadius: 12, padding: "18px 24px", fontSize: 13,
-              color: "#7f8c8d", textAlign: "center", pointerEvents: "none", lineHeight: 1.8, zIndex: 1000,
+              borderRadius: 12, padding: "18px 28px", fontSize: 13,
+              color: "#7f8c8d", textAlign: "center", pointerEvents: "none", lineHeight: 2, zIndex: 1000,
             }}>
-              Click anywhere on the map<br />or search an address above
+              {selectionMode === "radius"
+                ? <>Click anywhere on the map<br />or search an address above</>
+                : <>Click on the map to start drawing<br />Double-click to close the polygon</>
+              }
             </div>
           )}
         </div>

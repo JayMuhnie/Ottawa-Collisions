@@ -20,7 +20,11 @@ export async function fetchCollisionsNear(lat, lng, km) {
   const ymin = lat - radiusDeg;
   const xmax = lng + radiusDeg;
   const ymax = lat + radiusDeg;
+  return fetchCollisionsInBbox(xmin, ymin, xmax, ymax);
+}
 
+// Fetch collisions within a bounding box (used by both radius and polygon modes)
+export async function fetchCollisionsInBbox(xmin, ymin, xmax, ymax) {
   const params = new URLSearchParams({
     where: "1=1",
     geometry: `${xmin},${ymin},${xmax},${ymax}`,
@@ -33,13 +37,40 @@ export async function fetchCollisionsNear(lat, lng, km) {
     outSR: "4326",
     f: "geojson",
   });
-
   const res = await fetch(`${PROXY}?${params.toString()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
   const data = JSON.parse(text);
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
   return data.features || [];
+}
+
+// Ray-casting point-in-polygon test
+// polygon: [[lat, lng], ...], point: [lat, lng]
+export function pointInPolygon(point, polygon) {
+  const [py, px] = point;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [iy, ix] = polygon[i];
+    const [jy, jx] = polygon[j];
+    const intersect =
+      iy > py !== jy > py &&
+      px < ((jx - ix) * (py - iy)) / (jy - iy) + ix;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Get bounding box of a polygon [[lat,lng],...]
+export function polygonBbox(polygon) {
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  polygon.forEach(([lat, lng]) => {
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+  });
+  return { minLat, maxLat, minLng, maxLng };
 }
 
 export async function geocodeAddress(address) {
