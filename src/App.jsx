@@ -222,10 +222,18 @@ export default function App() {
     document.documentElement.style.overflow = "auto";
     document.getElementById("root").style.overflow = "auto";
     document.getElementById("root").style.height = "auto";
+
+    const boundary = selectionMode === "radius" && searchMarker
+      ? { type: "radius", lat: searchMarker.lat, lng: searchMarker.lng, radiusKm }
+      : selectionMode === "polygon" && polygon
+      ? { type: "polygon", vertices: polygon }
+      : null;
+
     return (
       <ReportPage
         collisions={filteredCollisions}
         locationLabel={locationLabel}
+        boundary={boundary}
         onBack={() => {
           document.body.style.overflow = "";
           document.documentElement.style.overflow = "";
@@ -536,6 +544,13 @@ export default function App() {
             highlightGeoId={highlightGeoId}
             excludedGeoIds={excludedGeoIds}
             onExcludedChange={setExcludedGeoIds}
+            boundary={
+              selectionMode === "radius" && searchMarker
+                ? { type: "radius", lat: searchMarker.lat, lng: searchMarker.lng, radiusKm }
+                : selectionMode === "polygon" && polygon
+                ? { type: "polygon", vertices: polygon }
+                : null
+            }
           />
         </aside>
       </div>

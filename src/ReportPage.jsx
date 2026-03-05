@@ -302,7 +302,7 @@ function LocationDetail({ loc, index }) {
 }
 
 // ── Main ─────────────────────────────────────────────────────────────
-export default function ReportPage({ collisions, locationLabel, onBack }) {
+export default function ReportPage({ collisions, locationLabel, boundary, onBack }) {
   const locations = useMemo(() => {
     const map = {};
     collisions.forEach(f => {
@@ -324,6 +324,19 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
   const totalPed    = collisions.filter(f => involvementFlags(f.properties || {}).ped).length;
   const totalCyc    = collisions.filter(f => involvementFlags(f.properties || {}).cyc).length;
   const generated   = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+
+  // Format boundary info for display
+  const boundaryText = useMemo(() => {
+    if (!boundary) return null;
+    if (boundary.type === "radius") {
+      return `Radius: ${boundary.radiusKm * 1000}m around ${boundary.lat.toFixed(6)}, ${boundary.lng.toFixed(6)}`;
+    }
+    if (boundary.type === "polygon") {
+      const coords = boundary.vertices.map(([lat, lng]) => `${lat.toFixed(6)},${lng.toFixed(6)}`).join(" | ");
+      return `Polygon vertices: ${coords}`;
+    }
+    return null;
+  }, [boundary]);
 
   return (
     <div style={{
@@ -359,7 +372,7 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
           fontSize: 12, cursor: "pointer",
         }}>← Back to Map</button>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, color: "#4a5578", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>
+        <span style={{ fontSize: 11, color: "#4a5578" }}>
           {collisions.length} collisions · {locations.length} locations
         </span>
         <button onClick={() => window.print()} style={{
@@ -369,18 +382,30 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
         }}>⎙ Print / Save PDF</button>
       </div>
 
-      {/* Page content — constrained to letter landscape printable width */}
+      {/* Page content */}
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 28px" }}>
 
         {/* Report title */}
         <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: "1px solid #1e2535" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#3d7de8", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif", marginBottom: 6, textTransform: "uppercase" }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#3d7de8", marginBottom: 6, textTransform: "uppercase" }}>
             Ottawa Collision Analysis · {generated}
           </div>
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "#e8ecf8" }}>
             Collision Summary Report
           </h1>
-          {locationLabel && <div style={{ fontSize: 13, color: "#4a5578" }}>📍 {locationLabel}</div>}
+
+          {/* Boundary reproduction info */}
+          {boundaryText && (
+            <div style={{
+              marginTop: 10, padding: "8px 12px",
+              background: "rgba(255,255,255,0.03)", border: "1px solid #1e2535",
+              borderRadius: 6, fontSize: 11, color: "#4a5578",
+              fontFamily: "monospace",
+            }}>
+              <span style={{ color: "#8b9cc8", fontWeight: 600, fontFamily: "inherit" }}>Boundary: </span>
+              {boundaryText}
+            </div>
+          )}
 
           {/* KPI row */}
           <div style={{ display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap" }}>
@@ -396,20 +421,20 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
                 background: "rgba(255,255,255,0.03)", border: "1px solid #1e2535",
                 borderRadius: 8, padding: "10px 16px", minWidth: 90,
               }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>{value}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color }}>{value}</div>
                 <div style={{ fontSize: 9, color: "#4a5578", letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>{label}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── Section 1: All-locations summary ── */}
+        {/* ── Section 1: All locations combined cross-tab ── */}
         <div style={{ marginBottom: 36 }}>
           <h2 style={{ fontSize: 13, fontWeight: 700, color: "#8b9cc8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
             All Locations — Summary
           </h2>
-          <div style={{ border: "1px solid #1e2535", borderRadius: 8, overflow: "hidden" }}>
-            <SummaryTable locations={locations} />
+          <div style={{ border: "1px solid #1e2535", borderRadius: 8, overflow: "hidden", padding: "12px 14px" }}>
+            <CrossTab features={collisions} />
           </div>
         </div>
 

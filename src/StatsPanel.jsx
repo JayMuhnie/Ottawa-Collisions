@@ -36,7 +36,7 @@ const border = "rgba(255,255,255,0.08)";
 
 const TABS = ["Stats", "Locations"];
 
-export default function StatsPanel({ collisions, allCollisions, loading, onHighlightLocation, highlightGeoId, onExcludedChange, excludedGeoIds }) {
+export default function StatsPanel({ collisions, allCollisions, loading, onHighlightLocation, highlightGeoId, onExcludedChange, excludedGeoIds, boundary }) {
   const [tab, setTab] = useState("Stats");
 
   if (loading) {
@@ -163,7 +163,7 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
         ))}
         <div style={{ flex: 1 }} />
         <button
-          onClick={() => exportToCSV(collisions)}
+          onClick={() => exportToCSV(collisions, "ottawa-collisions.csv", boundary)}
           title="Export to CSV"
           style={{
             background: "rgba(255,255,255,0.06)",
@@ -226,15 +226,15 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
             {/* Severity pie */}
             <div style={S.card}>
               <div style={S.sectionTitle}>Severity Breakdown</div>
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie data={severityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 10, left: 0 }}>
+                  <Pie data={severityData} dataKey="value" nameKey="name" cx="50%" cy="42%" outerRadius={65} paddingAngle={2}>
                     {severityData.map((entry) => (
                       <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] || "#95a5a6"} />
                     ))}
                   </Pie>
                   <Tooltip {...tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 10, color: "#bdc3c7" }} />
+                  <Legend wrapperStyle={{ fontSize: 10, color: "#bdc3c7", paddingTop: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
