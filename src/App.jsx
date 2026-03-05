@@ -47,6 +47,8 @@ export default function App() {
   const [outOfAreaIds, setOutOfAreaIds] = useState([]);
   const [excludedGeoIds, setExcludedGeoIds] = useState(new Set());
   const [showReport, setShowReport] = useState(false);
+  const [showBoundaryImport, setShowBoundaryImport] = useState(false);
+  const [boundaryImportText, setBoundaryImportText] = useState("");
 
   const allYears = useMemo(() => getUniqueYears(collisions), [collisions]);
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
@@ -124,7 +126,76 @@ export default function App() {
     }
   }, [expandWithSameLocations]); // eslint-disable-line
 
-  // ── Polygon drawn callback ────────────────────────────────────────
+  const handleBoundaryImport = useCallback(() => {
+    const text = boundaryImportText.trim();
+    if (!text) return;
+
+    // Try radius format: "lat=X lng=Y radius=Zkm" or raw coords from CSV comment
+    const radMatch = text.match(/lat[=:\s]+([+-]?\d+\.?\d*)[,\s]+lng[=:\s]+([+-]?\d+\.?\d*)[,\s]+radius[=:\s]+([0-9.]+)\s*km/i)
+      || text.match(/([+-]?\d{1,3}\.\d+)[,\s]+([+-]?\d{1,3}\.\d+)[,\s]+([0-9.]+)\s*km/i);
+    if (radMatch) {
+      const lat = parseFloat(radMatch[1]);
+      const lng = parseFloat(radMatch[2]);
+      const km  = parseFloat(radMatch[3]);
+      if (!isNaN(lat) && !isNaN(lng) && !isNaN(km)) {
+        switchToRadius();
+        setSearchMarker({ lat, lng });
+        setRadiusKm(km);
+        setRadiusInput(String(Math.round(km * 1000)));
+        setLocationLabel(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        loadCollisions(lat, lng, km);
+        setShowBoundaryImport(false);
+        setBoundaryImportText("");
+        return;
+      }
+    }
+
+    // Try polygon format: "lat,lng | lat,lng | ..." (from CSV or report)
+    const pipeSegments = text.split(/\s*\|\s*/);
+    if (pipeSegments.length >= 3) {
+      const verts = pipeSegments.map(seg => {
+        const parts = seg.trim().split(/[,\s]+/);
+        const lat = parseFloat(parts[0]);
+        const lng = parseFloat(parts[1]);
+        return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
+      }).filter(Boolean);
+      if (verts.length >= 3) {
+        switchToPolygon();
+        setDrawMode(false);
+        setPolygon(verts);
+        setLocationLabel(`Polygon · ${verts.length} vertices`);
+        loadCollisionsInPolygon(verts);
+        setShowBoundaryImport(false);
+        setBoundaryImportText("");
+        return;
+      }
+    }
+
+    // Try comma-separated pairs without pipes: "lat lng, lat lng, ..."
+    const commaPairs = text.split(/\s*,\s*/);
+    if (commaPairs.length >= 6) { // 3+ pairs
+      const verts = [];
+      for (let i = 0; i < commaPairs.length - 1; i += 2) {
+        const lat = parseFloat(commaPairs[i]);
+        const lng = parseFloat(commaPairs[i + 1]);
+        if (!isNaN(lat) && !isNaN(lng)) verts.push([lat, lng]);
+      }
+      if (verts.length >= 3) {
+        switchToPolygon();
+        setDrawMode(false);
+        setPolygon(verts);
+        setLocationLabel(`Polygon · ${verts.length} vertices`);
+        loadCollisionsInPolygon(verts);
+        setShowBoundaryImport(false);
+        setBoundaryImportText("");
+        return;
+      }
+    }
+
+    setError("Could not parse boundary. Paste the 'To reproduce' line from a CSV or report.");
+    setShowBoundaryImport(false);
+    setBoundaryImportText("");
+  }, [boundaryImportText, loadCollisions, loadCollisionsInPolygon]); // eslint-disable-line
   const handlePolygonComplete = useCallback((verts) => {
     setPolygon(verts);
     setDrawMode(false);
@@ -291,6 +362,14 @@ export default function App() {
           }}>{geocoding ? "…" : "SEARCH"}</button>
         </div>
 
+          <button onClick={() => { setShowBoundaryImport(b => !b); setBoundaryImportText(""); }} style={{
+            background: showBoundaryImport ? "rgba(0,180,216,0.15)" : "rgba(255,255,255,0.05)",
+            border: `1px solid ${showBoundaryImport ? accent : border}`,
+            borderRadius: 6, color: showBoundaryImport ? accent : "#bdc3c7",
+            padding: "6px 12px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
+          }}>📐 Load Boundary</button>
+        </div>
+
         {/* Mode toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "3px 4px", border: `1px solid ${border}` }}>
           <button onClick={switchToRadius} style={{
@@ -373,6 +452,49 @@ export default function App() {
           </div>
         )}
       </header>
+
+      {/* ── Boundary import panel ────────────────────────────────── */}
+      {showBoundaryImport && (
+        <div style={{
+          background: "#111124", borderBottom: `1px solid ${border}`,
+          padding: "10px 18px", display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: "#7f8c8d", marginBottom: 6 }}>
+              Paste the <b style={{ color: accent }}>"To reproduce"</b> line from a CSV export or report boundary box:
+            </div>
+            <div style={{ fontSize: 10, color: "#4a5578", marginBottom: 6 }}>
+              <b style={{ color: "#8b9cc8" }}>Radius:</b> lat=45.XXXXXX lng=-75.XXXXXX radius=0.5km &nbsp;|&nbsp;
+              <b style={{ color: "#8b9cc8" }}>Polygon:</b> 45.XXXXXX,-75.XXXXXX | 45.XXXXXX,-75.XXXXXX | …
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={boundaryImportText}
+                onChange={e => setBoundaryImportText(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleBoundaryImport()}
+                placeholder="Paste boundary string here…"
+                style={{
+                  flex: 1, background: "rgba(255,255,255,0.06)", border: `1px solid ${border}`,
+                  borderRadius: 6, color: "#ecf0f1", padding: "7px 12px",
+                  fontSize: 12, outline: "none",
+                }}
+                onFocus={e => e.target.style.borderColor = accent}
+                onBlur={e => e.target.style.borderColor = border}
+                autoFocus
+              />
+              <button onClick={handleBoundaryImport} style={{
+                background: accent, border: "none", borderRadius: 6,
+                color: "#000", padding: "7px 16px", fontSize: 12,
+                fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+              }}>Load</button>
+              <button onClick={() => { setShowBoundaryImport(false); setBoundaryImportText(""); }} style={{
+                background: "none", border: `1px solid ${border}`, borderRadius: 6,
+                color: "#7f8c8d", padding: "7px 10px", fontSize: 12, cursor: "pointer",
+              }}>✕</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Error ────────────────────────────────────────────────── */}
       {error && (

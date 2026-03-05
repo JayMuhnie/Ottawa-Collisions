@@ -226,15 +226,15 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
             {/* Severity pie */}
             <div style={S.card}>
               <div style={S.sectionTitle}>Severity Breakdown</div>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart margin={{ top: 0, right: 0, bottom: 10, left: 0 }}>
-                  <Pie data={severityData} dataKey="value" nameKey="name" cx="50%" cy="42%" outerRadius={65} paddingAngle={2}>
+              <ResponsiveContainer width="100%" height={210}>
+                <PieChart margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
+                  <Pie data={severityData} dataKey="value" nameKey="name" cx="50%" cy="40%" outerRadius={60} paddingAngle={2}>
                     {severityData.map((entry) => (
                       <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] || "#95a5a6"} />
                     ))}
                   </Pie>
                   <Tooltip {...tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 10, color: "#bdc3c7", paddingTop: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 10, color: "#bdc3c7", paddingTop: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

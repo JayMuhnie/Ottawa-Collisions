@@ -57,7 +57,7 @@ const css = {
   },
   thLeft: { textAlign: "left" },
   td: {
-    padding: "6px 10px",
+    padding: "6px 6px",
     color: "#c8d0e8",
     border: "1px solid #1a2030",
     fontSize: 12,
@@ -131,7 +131,17 @@ function CrossTab({ features }) {
           <tr>
             <th style={{ ...css.th, ...css.thLeft, minWidth: 150 }}>Severity</th>
             {types.map(t => (
-              <th key={t} style={{ ...css.th, maxWidth: 90, fontSize: 9 }}>
+              <th key={t} style={{
+                ...css.th,
+                width: 52,
+                maxWidth: 52,
+                fontSize: 9,
+                whiteSpace: "normal",
+                wordBreak: "break-word",
+                verticalAlign: "bottom",
+                lineHeight: 1.3,
+                padding: "6px 4px",
+              }}>
                 {t.replace(" Collision", "").replace("Turning Movement", "Turning")}
               </th>
             ))}
