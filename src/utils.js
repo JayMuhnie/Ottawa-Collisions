@@ -12,7 +12,7 @@ export const CHART_PALETTE = [
   "#023e8a", "#90e0ef", "#ade8f4",
 ];
 
-const DIRECT = "https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Collisions/FeatureServer/0/query";
+const PROXY = "/api/collisions";
 
 export async function fetchCollisionsNear(lat, lng, km) {
   const radiusDeg = km / 111;
@@ -21,7 +21,6 @@ export async function fetchCollisionsNear(lat, lng, km) {
   const xmax = lng + radiusDeg;
   const ymax = lat + radiusDeg;
 
-  // Use simple comma-separated bbox string — most reliable format for ArcGIS
   const params = new URLSearchParams({
     where: "1=1",
     geometry: `${xmin},${ymin},${xmax},${ymax}`,
@@ -35,13 +34,9 @@ export async function fetchCollisionsNear(lat, lng, km) {
     f: "geojson",
   });
 
-  const url = `${DIRECT}?${params.toString()}`;
-  console.log("Fetching:", url);
-
-  const res = await fetch(url);
+  const res = await fetch(`${PROXY}?${params.toString()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
-  console.log("Response preview:", text.slice(0, 200));
   const data = JSON.parse(text);
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
   return data.features || [];
@@ -75,7 +70,7 @@ export function collisionTypeLabel(val) {
   if (!val) return "Unknown";
   const stripped = String(val).replace(/^\d+\s*-\s*/, "").trim();
   const map = {
-    "approaching": "Head-On / Approaching",
+    "approaching": "Head-On",
     "angle": "Angle",
     "rear end": "Rear-End",
     "sideswipe": "Sideswipe",
@@ -102,4 +97,74 @@ export function getLatLng(feature) {
   const coords = feature?.geometry?.coordinates;
   if (!coords || coords.length < 2) return null;
   return { lat: coords[1], lng: coords[0] };
+}
+
+// Get all unique years from a feature list
+export function getUniqueYears(features) {
+  const years = new Set();
+  features.forEach(f => {
+    const yr = extractYear(f.properties || {});
+    if (yr) years.add(yr);
+  });
+  return Array.from(years).sort();
+}
+
+// Get all unique collision types from a feature list
+export function getUniqueTypes(features) {
+  const types = new Set();
+  features.forEach(f => {
+    const t = collisionTypeLabel((f.properties || {}).Initial_Impact_Type);
+    if (t && t !== "Unknown") types.add(t);
+  });
+  return Array.from(types).sort();
+}
+
+// Apply filters to a feature list
+export function applyFilters(features, filters) {
+  return features.filter(f => {
+    const p = f.properties || {};
+    if (filters.years.length > 0) {
+      const yr = extractYear(p);
+      if (!filters.years.includes(yr)) return false;
+    }
+    if (filters.types.length > 0) {
+      const t = collisionTypeLabel(p.Initial_Impact_Type);
+      if (!filters.types.includes(t)) return false;
+    }
+    if (filters.severity.length > 0) {
+      const s = severityLabel(p.Classification_Of_Accident);
+      if (!filters.severity.includes(s)) return false;
+    }
+    return true;
+  });
+}
+
+// Group features by location name/ID and find repeat locations
+export function getRepeatLocations(features) {
+  const locationMap = {};
+  features.forEach(f => {
+    const p = f.properties || {};
+    const key = p.Geo_ID || p.Location;
+    if (!key) return;
+    if (!locationMap[key]) {
+      locationMap[key] = {
+        key,
+        name: p.Location || key,
+        geoId: p.Geo_ID,
+        features: [],
+        fatal: 0,
+        injury: 0,
+        pdo: 0,
+      };
+    }
+    locationMap[key].features.push(f);
+    const sev = severityLabel(p.Classification_Of_Accident);
+    if (sev === "Fatal") locationMap[key].fatal++;
+    else if (sev === "Non-fatal Injury") locationMap[key].injury++;
+    else locationMap[key].pdo++;
+  });
+
+  return Object.values(locationMap)
+    .filter(l => l.features.length > 1)
+    .sort((a, b) => b.features.length - a.features.length);
 }

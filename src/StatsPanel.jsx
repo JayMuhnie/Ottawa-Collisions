@@ -1,9 +1,11 @@
+import { useState } from "react";
 import {
   BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { SEVERITY_COLORS, CHART_PALETTE, severityLabel, collisionTypeLabel, extractYear } from "./utils";
+import { SEVERITY_COLORS, CHART_PALETTE, severityLabel, collisionTypeLabel, extractYear, getRepeatLocations } from "./utils";
+import RepeatLocations from "./RepeatLocations";
 
 const S = {
   card: {
@@ -29,7 +31,14 @@ const tooltipStyle = {
   itemStyle: { color: "#bdc3c7" },
 };
 
-export default function StatsPanel({ collisions, loading }) {
+const accent = "#00b4d8";
+const border = "rgba(255,255,255,0.08)";
+
+const TABS = ["Stats", "Repeat Locations"];
+
+export default function StatsPanel({ collisions, loading, onHighlightLocation, highlightGeoId }) {
+  const [tab, setTab] = useState("Stats");
+
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", flexDirection: "column", gap: 12, color: "#7f8c8d" }}>
@@ -51,8 +60,8 @@ export default function StatsPanel({ collisions, loading }) {
     );
   }
 
-  // All properties come from feature.properties in GeoJSON
   const props = collisions.map((f) => f.properties || {});
+  const repeatLocations = getRepeatLocations(collisions);
 
   // Severity
   const severityCounts = {};
@@ -85,7 +94,7 @@ export default function StatsPanel({ collisions, loading }) {
     .sort((a, b) => b.value - a.value)
     .slice(0, 8);
 
-  // Road surface conditions
+  // Road surface
   const roadCounts = {};
   props.forEach((p) => {
     const raw = p.Road_1_Surface_Condition;
@@ -99,7 +108,7 @@ export default function StatsPanel({ collisions, loading }) {
     .sort((a, b) => b.value - a.value)
     .slice(0, 7);
 
-  // Environment conditions
+  // Weather
   const envCounts = {};
   props.forEach((p) => {
     const raw = p.Environment_Condition_1;
@@ -117,108 +126,145 @@ export default function StatsPanel({ collisions, loading }) {
   const injury = severityCounts["Non-fatal Injury"] || 0;
 
   return (
-    <div style={{ overflowY: "auto", height: "100%", paddingRight: 2 }}>
-      {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
-        {[
-          { label: "Total", value: collisions.length, color: "#ecf0f1" },
-          { label: "Fatal", value: fatal, color: "#e74c3c" },
-          { label: "Injury", value: injury, color: "#e67e22" },
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ ...S.card, padding: "12px 10px", marginBottom: 0, textAlign: "center" }}>
-            <div style={{ ...S.sectionTitle, marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: "'Space Mono', monospace" }}>
-              {value.toLocaleString()}
-            </div>
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* Tabs */}
+      <div style={{ display: "flex", borderBottom: `1px solid ${border}`, marginBottom: 12, flexShrink: 0 }}>
+        {TABS.map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            background: "none",
+            border: "none",
+            borderBottom: tab === t ? `2px solid ${accent}` : "2px solid transparent",
+            color: tab === t ? accent : "#7f8c8d",
+            padding: "6px 14px",
+            fontSize: 11,
+            cursor: "pointer",
+            fontFamily: "'Space Mono', monospace",
+            letterSpacing: "0.06em",
+            marginBottom: -1,
+          }}>
+            {t}
+            {t === "Repeat Locations" && repeatLocations.length > 0 && (
+              <span style={{ marginLeft: 5, background: accent, color: "#000", borderRadius: 10, padding: "0 5px", fontSize: 10 }}>
+                {repeatLocations.length}
+              </span>
+            )}
+          </button>
         ))}
       </div>
 
-      {/* Severity pie */}
-      <div style={S.card}>
-        <div style={S.sectionTitle}>Severity Breakdown</div>
-        <ResponsiveContainer width="100%" height={160}>
-          <PieChart>
-            <Pie data={severityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
-              {severityData.map((entry) => (
-                <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] || "#95a5a6"} />
+      <div style={{ flex: 1, overflowY: "auto", paddingRight: 2 }}>
+        {tab === "Stats" ? (
+          <>
+            {/* KPIs */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
+              {[
+                { label: "Total", value: collisions.length, color: "#ecf0f1" },
+                { label: "Fatal", value: fatal, color: "#e74c3c" },
+                { label: "Injury", value: injury, color: "#e67e22" },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ ...S.card, padding: "12px 10px", marginBottom: 0, textAlign: "center" }}>
+                  <div style={{ ...S.sectionTitle, marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: "'Space Mono', monospace" }}>
+                    {value.toLocaleString()}
+                  </div>
+                </div>
               ))}
-            </Pie>
-            <Tooltip {...tooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 10, color: "#bdc3c7" }} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+            </div>
 
-      {/* Year trend */}
-      {yearData.length > 1 && (
-        <div style={S.card}>
-          <div style={S.sectionTitle}>Year-over-Year Trend</div>
-          <ResponsiveContainer width="100%" height={130}>
-            <LineChart data={yearData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis dataKey="year" tick={{ fontSize: 10, fill: "#7f8c8d" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#7f8c8d" }} />
-              <Tooltip {...tooltipStyle} />
-              <Line type="monotone" dataKey="count" stroke="#00b4d8" strokeWidth={2} dot={{ fill: "#00b4d8", r: 3 }} activeDot={{ r: 5 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+            {/* Severity pie */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Severity Breakdown</div>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={severityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
+                    {severityData.map((entry) => (
+                      <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] || "#95a5a6"} />
+                    ))}
+                  </Pie>
+                  <Tooltip {...tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 10, color: "#bdc3c7" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
 
-      {/* Collision type */}
-      {typeData.length > 0 && (
-        <div style={S.card}>
-          <div style={S.sectionTitle}>Collision Type</div>
-          <ResponsiveContainer width="100%" height={Math.max(100, typeData.length * 26)}>
-            <BarChart data={typeData} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: "#7f8c8d" }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#bdc3c7" }} width={120} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-                {typeData.map((_, i) => <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+            {/* Year trend */}
+            {yearData.length > 1 && (
+              <div style={S.card}>
+                <div style={S.sectionTitle}>Year-over-Year Trend</div>
+                <ResponsiveContainer width="100%" height={130}>
+                  <LineChart data={yearData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="year" tick={{ fontSize: 10, fill: "#7f8c8d" }} />
+                    <YAxis tick={{ fontSize: 10, fill: "#7f8c8d" }} />
+                    <Tooltip {...tooltipStyle} />
+                    <Line type="monotone" dataKey="count" stroke={accent} strokeWidth={2} dot={{ fill: accent, r: 3 }} activeDot={{ r: 5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
-      {/* Road surface */}
-      {roadData.length > 0 && (
-        <div style={S.card}>
-          <div style={S.sectionTitle}>Road Surface Conditions</div>
-          <ResponsiveContainer width="100%" height={Math.max(80, roadData.length * 24)}>
-            <BarChart data={roadData} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: "#7f8c8d" }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#bdc3c7" }} width={120} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="value" fill="#48cae4" radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+            {/* Collision type */}
+            {typeData.length > 0 && (
+              <div style={S.card}>
+                <div style={S.sectionTitle}>Collision Type</div>
+                <ResponsiveContainer width="100%" height={Math.max(100, typeData.length * 26)}>
+                  <BarChart data={typeData} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: "#7f8c8d" }} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#bdc3c7" }} width={120} />
+                    <Tooltip {...tooltipStyle} />
+                    <Bar dataKey="value" radius={[0, 3, 3, 0]}>
+                      {typeData.map((_, i) => <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
-      {/* Weather/environment */}
-      {envData.length > 0 && (
-        <div style={S.card}>
-          <div style={S.sectionTitle}>Weather Conditions</div>
-          <ResponsiveContainer width="100%" height={Math.max(80, envData.length * 24)}>
-            <BarChart data={envData} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: "#7f8c8d" }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#bdc3c7" }} width={120} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="value" fill="#0077b6" radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+            {/* Road surface */}
+            {roadData.length > 0 && (
+              <div style={S.card}>
+                <div style={S.sectionTitle}>Road Surface Conditions</div>
+                <ResponsiveContainer width="100%" height={Math.max(80, roadData.length * 24)}>
+                  <BarChart data={roadData} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: "#7f8c8d" }} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#bdc3c7" }} width={120} />
+                    <Tooltip {...tooltipStyle} />
+                    <Bar dataKey="value" fill="#48cae4" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
-      <div style={{ fontSize: 10, color: "#4a5568", textAlign: "center", paddingBottom: 16, lineHeight: 1.7 }}>
-        Source: City of Ottawa Open Data · Traffic Collisions 2017–present
-        {collisions.length >= 2000 && <><br /><span style={{ color: "#e67e22" }}>Map shows first 2,000 results</span></>}
+            {/* Weather */}
+            {envData.length > 0 && (
+              <div style={S.card}>
+                <div style={S.sectionTitle}>Weather Conditions</div>
+                <ResponsiveContainer width="100%" height={Math.max(80, envData.length * 24)}>
+                  <BarChart data={envData} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: "#7f8c8d" }} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#bdc3c7" }} width={120} />
+                    <Tooltip {...tooltipStyle} />
+                    <Bar dataKey="value" fill="#0077b6" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            <div style={{ fontSize: 10, color: "#4a5568", textAlign: "center", paddingBottom: 16, lineHeight: 1.7 }}>
+              Source: City of Ottawa Open Data · Traffic Collisions 2017–present
+              {collisions.length >= 2000 && <><br /><span style={{ color: "#e67e22" }}>Map shows first 2,000 results</span></>}
+            </div>
+          </>
+        ) : (
+          <RepeatLocations
+            locations={repeatLocations}
+            onSelect={onHighlightLocation}
+            selectedGeoId={highlightGeoId}
+          />
+        )}
       </div>
     </div>
   );
