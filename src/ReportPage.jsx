@@ -170,7 +170,7 @@ function CrossTab({ features, globalTypes }) {
       <div style={{ fontSize: 11, color: "#7a8fa8", marginBottom: 8 }}>
         Data period: <span style={{ color: "#a8b8cc", fontWeight: 600 }}>{yearLabel}</span>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "auto" }}>
         <thead>
           <tr>
             <th style={{ ...css.th, ...css.thLeft, width: 130, whiteSpace: "nowrap" }}>Severity</th>
@@ -341,7 +341,7 @@ function LocationDetail({ loc, index, globalTypes }) {
   const { pedTotal, cycTotal, pedFatal, cycFatal } = buildStats(loc.features);
 
   return (
-    <div style={{ marginBottom: 36, pageBreakInside: "avoid" }}>
+    <div className="location-block" style={{ marginBottom: 36 }}>
       <div style={{
         display: "flex", alignItems: "center", gap: 12,
         borderBottom: "2px solid #1e2535", paddingBottom: 8, marginBottom: 14,
@@ -378,8 +378,40 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
     const map = {};
     collisions.forEach(f => {
       const p = f.properties || {};
-      const key = p.Geo_ID || p.Location || "(No Location Data)";
-      if (!map[key]) map[key] = { key, name: p.Location || (p.Geo_ID ? `Geo_ID: ${p.Geo_ID}` : "(No Location Data)"), geoId: p.Geo_ID, features: [], fatal: 0, injury: 0, pdo: 0 };
+      const geo = f.geometry;
+      // Location name: trim whitespace — a bare space is as good as empty
+      const locName = (p.Location || "").trim();
+      const geoId   = p.Geo_ID != null ? String(p.Geo_ID).trim() : "";
+
+      let key, name;
+      if (locName) {
+        // Normal case — has a street intersection name
+        key  = geoId || locName;
+        name = locName;
+      } else if (geoId) {
+        // Has a Geo_ID but no name — use Geo_ID as key, show coordinates if available
+        key  = geoId;
+        const coords = geo?.coordinates;
+        name = coords
+          ? `${Number(coords[1]).toFixed(5)}, ${Number(coords[0]).toFixed(5)}`
+          : `Geo_ID: ${geoId}`;
+      } else {
+        // No name and no Geo_ID — group by rounded coordinate (~10m grid) so
+        // nearby collisions at the same unnamed spot stay together rather than
+        // all merging into a single bucket.
+        const coords = geo?.coordinates;
+        if (coords) {
+          const lat5 = Number(coords[1]).toFixed(4);  // ~11m precision
+          const lng5 = Number(coords[0]).toFixed(4);
+          key  = `coords:${lat5},${lng5}`;
+          name = `${lat5}, ${lng5}`;
+        } else {
+          key  = "(No Location Data)";
+          name = "(No Location Data)";
+        }
+      }
+
+      if (!map[key]) map[key] = { key, name, geoId: geoId || null, features: [], fatal: 0, injury: 0, pdo: 0 };
       map[key].features.push(f);
       const sev = severityLabel(p.Classification_Of_Accident);
       if (sev === "Fatal") map[key].fatal++;
@@ -422,12 +454,25 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
             print-color-adjust: exact;
             color: #dce4f0 !important;
           }
-          @page { margin: 12mm 14mm; size: letter landscape; }
-          h1 { font-size: 18pt !important; }
-          h2 { font-size: 12pt !important; }
-          h3 { font-size: 10pt !important; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; }
+          @page { margin: 10mm 12mm; size: letter landscape; }
+          h1 { font-size: 16pt !important; }
+          h2 { font-size: 11pt !important; }
+          h3 { font-size: 9pt !important; }
+          /* Force content to fit page width */
+          .report-content { max-width: 100% !important; padding: 0 !important; }
+          /* Tables: allow page breaks between rows, repeat header on each page */
+          table { 
+            width: 100% !important;
+            page-break-inside: auto !important;
+            table-layout: auto !important;
+            font-size: 9pt !important;
+          }
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          /* Keep each location block together where possible */
+          .location-block { page-break-inside: avoid; }
+          /* Reduce padding in print to fit more columns */
+          td, th { padding: 4px 4px !important; font-size: 9pt !important; }
         }
       `}</style>
 
@@ -455,7 +500,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
       </div>
 
       {/* Page content */}
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 28px" }}>
+      <div className="report-content" style={{ maxWidth: 960, margin: "0 auto", padding: "32px 28px" }}>
 
         {/* Report title */}
         <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: "1px solid #1e2535" }}>
