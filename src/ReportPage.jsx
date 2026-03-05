@@ -63,7 +63,7 @@ const css = {
     fontSize: 12,
     textAlign: "center",
     fontVariantNumeric: "tabular-nums",
-    fontFamily: "'Space Mono', monospace",
+    fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
   },
   tdLabel: {
     textAlign: "left",
@@ -82,7 +82,7 @@ const css = {
 // ── Cross-tab matrix table ───────────────────────────────────────────
 // Rows = severity, columns = collision type
 // Extra columns: 🚶 Ped, 🚲 Cyc, Year breakdown, Row total
-function CrossTab({ features, compact = false }) {
+function CrossTab({ features }) {
   const types = getTypes(features);
   const { matrix, years, pedTotal, cycTotal } = buildStats(features);
 
@@ -117,8 +117,15 @@ function CrossTab({ features, compact = false }) {
     return "transparent";
   };
 
+  const yearLabel = yearKeys.length === 0 ? "All years"
+    : yearKeys.length === 1 ? yearKeys[0]
+    : `${yearKeys[0]}–${yearKeys[yearKeys.length - 1]}` + (yearKeys.length < (parseInt(yearKeys[yearKeys.length-1]) - parseInt(yearKeys[0]) + 1) ? ` (filtered: ${yearKeys.join(", ")})` : "");
+
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div>
+      <div style={{ fontSize: 11, color: "#4a5578", marginBottom: 8 }}>
+        Data period: <span style={{ color: "#8b9cc8", fontWeight: 600 }}>{yearLabel}</span>
+      </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr>
@@ -130,23 +137,12 @@ function CrossTab({ features, compact = false }) {
             ))}
             <th style={{ ...css.th, borderLeft: "2px solid #2a3350" }}>🚶 Ped</th>
             <th style={css.th}>🚲 Cyc</th>
-            {!compact && yearKeys.map(yr => (
-              <th key={yr} style={{ ...css.th, borderLeft: yr === yearKeys[0] ? "2px solid #2a3350" : undefined, fontSize: 9 }}>{yr}</th>
-            ))}
             <th style={{ ...css.th, borderLeft: "2px solid #2a3350", background: "#111620" }}>Total</th>
           </tr>
         </thead>
         <tbody>
           {activeSevs.map((sev, si) => {
             const rowTotal = features.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === sev).length;
-            const yearsBySev = {};
-            features.forEach(f => {
-              const p = f.properties || {};
-              if (severityLabel(p.Classification_Of_Accident) === sev) {
-                const yr = extractYear(p) || "Unknown";
-                yearsBySev[yr] = (yearsBySev[yr] || 0) + 1;
-              }
-            });
             return (
               <tr key={sev} style={{ background: si % 2 === 0 ? "transparent" : "rgba(255,255,255,0.012)" }}>
                 <td style={{ ...css.td, ...css.tdLabel, color: SEV_COLORS[sev] || "#c8d0e8" }}>{sev}</td>
@@ -164,17 +160,10 @@ function CrossTab({ features, compact = false }) {
                 <td style={{ ...css.td, color: cycBySev[sev] ? "#2ecc71" : css.zero.color }}>
                   {cycBySev[sev] || "—"}
                 </td>
-                {!compact && yearKeys.map(yr => (
-                  <td key={yr} style={{ ...css.td, borderLeft: yr === yearKeys[0] ? "2px solid #2a3350" : undefined, fontSize: 11, color: yearsBySev[yr] ? "#c8d0e8" : css.zero.color }}>
-                    {yearsBySev[yr] || "—"}
-                  </td>
-                ))}
                 <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: SEV_COLORS[sev] || "#e8ecf8" }}>{rowTotal}</td>
               </tr>
             );
           })}
-
-          {/* Column totals row */}
           <tr style={{ borderTop: "2px solid #2a3350" }}>
             <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#8b9cc8" }}>Total</td>
             {types.map(t => (
@@ -182,11 +171,6 @@ function CrossTab({ features, compact = false }) {
             ))}
             <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
             <td style={{ ...css.td, ...css.tdTotal, color: cycTotal ? "#2ecc71" : css.zero.color }}>{cycTotal || "—"}</td>
-            {!compact && yearKeys.map(yr => (
-              <td key={yr} style={{ ...css.td, ...css.tdTotal, borderLeft: yr === yearKeys[0] ? "2px solid #2a3350" : undefined, color: "#c8d0e8" }}>
-                {years[yr] || "—"}
-              </td>
-            ))}
             <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#e8ecf8", fontSize: 13, fontWeight: 700 }}>{grandTotal}</td>
           </tr>
         </tbody>
@@ -197,15 +181,23 @@ function CrossTab({ features, compact = false }) {
 
 // ── Summary overview table (one row per location) ───────────────────
 function SummaryTable({ locations }) {
-  // Collect all types across ALL locations for consistent columns
   const allFeatures = locations.flatMap(l => l.features);
   const types = getTypes(allFeatures);
   const activeSevs = SEV_ORDER.filter(s =>
     allFeatures.some(f => severityLabel((f.properties || {}).Classification_Of_Accident) === s)
   );
 
+  const yearKeys = [...new Set(allFeatures.map(f => extractYear(f.properties || {})).filter(Boolean))].sort();
+  const yearLabel = yearKeys.length === 0 ? "All years"
+    : yearKeys.length === 1 ? yearKeys[0]
+    : `${yearKeys[0]}–${yearKeys[yearKeys.length - 1]}` + (yearKeys.length < (parseInt(yearKeys[yearKeys.length-1]) - parseInt(yearKeys[0]) + 1) ? ` (filtered: ${yearKeys.join(", ")})` : "");
+
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div>
+      <div style={{ fontSize: 11, color: "#4a5578", marginBottom: 8 }}>
+        Data period: <span style={{ color: "#8b9cc8", fontWeight: 600 }}>{yearLabel}</span>
+      </div>
+      <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr>
@@ -264,6 +256,7 @@ function SummaryTable({ locations }) {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -282,7 +275,7 @@ function LocationDetail({ loc, index }) {
       }}>
         <span style={{
           fontSize: 10, fontWeight: 700, color: "#3d7de8",
-          fontFamily: "'Space Mono', monospace",
+          fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
           background: "rgba(61,125,232,0.12)", borderRadius: 4, padding: "2px 7px",
         }}>#{index + 1}</span>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e8ecf8", flex: 1 }}>{name}</h3>
@@ -366,7 +359,7 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
           fontSize: 12, cursor: "pointer",
         }}>← Back to Map</button>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, color: "#4a5578", fontFamily: "'Space Mono', monospace" }}>
+        <span style={{ fontSize: 11, color: "#4a5578", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>
           {collisions.length} collisions · {locations.length} locations
         </span>
         <button onClick={() => window.print()} style={{
@@ -381,7 +374,7 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
 
         {/* Report title */}
         <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: "1px solid #1e2535" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#3d7de8", fontFamily: "'Space Mono', monospace", marginBottom: 6, textTransform: "uppercase" }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#3d7de8", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif", marginBottom: 6, textTransform: "uppercase" }}>
             Ottawa Collision Analysis · {generated}
           </div>
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "#e8ecf8" }}>
@@ -403,7 +396,7 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
                 background: "rgba(255,255,255,0.03)", border: "1px solid #1e2535",
                 borderRadius: 8, padding: "10px 16px", minWidth: 90,
               }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: "'Space Mono', monospace" }}>{value}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>{value}</div>
                 <div style={{ fontSize: 9, color: "#4a5578", letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>{label}</div>
               </div>
             ))}

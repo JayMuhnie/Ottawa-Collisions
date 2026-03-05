@@ -58,7 +58,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
             background: loc.fatal > 0 ? "#e74c3c" : loc.injury > 0 ? "#e67e22" : isRepeat ? "#3498db" : "rgba(255,255,255,0.1)",
             borderRadius: 4, padding: "2px 7px",
             fontSize: 12, fontWeight: 700, color: "#fff",
-            flexShrink: 0, fontFamily: "'Space Mono', monospace",
+            flexShrink: 0, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
             minWidth: 24, textAlign: "center", cursor: "pointer",
           }}
         >
@@ -152,7 +152,7 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Controls row */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexShrink: 0, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7f8c8d", fontFamily: "'Space Mono', monospace", flex: 1 }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7f8c8d", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif", flex: 1 }}>
           {displayed.length.toLocaleString()} location{displayed.length !== 1 ? "s" : ""}
           {excludedCount > 0 && <span style={{ color: "#e74c3c" }}> · {excludedCount} excluded</span>}
         </div>

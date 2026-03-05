@@ -21,7 +21,7 @@ const S = {
     textTransform: "uppercase",
     color: "#7f8c8d",
     marginBottom: 10,
-    fontFamily: "'Space Mono', monospace",
+    fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
   },
 };
 
@@ -149,7 +149,7 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
             padding: "6px 14px",
             fontSize: 11,
             cursor: "pointer",
-            fontFamily: "'Space Mono', monospace",
+            fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
             letterSpacing: "0.06em",
             marginBottom: -1,
           }}>
@@ -193,7 +193,7 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ ...S.card, padding: "12px 10px", marginBottom: 0, textAlign: "center" }}>
                   <div style={{ ...S.sectionTitle, marginBottom: 4 }}>{label}</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: "'Space Mono', monospace" }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>
                     {value.toLocaleString()}
                   </div>
                 </div>
@@ -204,12 +204,12 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
             {(pedCount > 0 || cycCount > 0) && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
                 {[
-                  { label: "🚶 Pedestrian", value: pedCount, fatal: pedFatal, color: "#9b59b6" },
-                  { label: "🚲 Cyclist", value: cycCount, fatal: cycFatal, color: "#9b59b6" },
+                  { label: "🚶 Pedestrian", value: pedCount, fatal: pedFatal, color: "#2ecc71" },
+                  { label: "🚲 Cyclist", value: cycCount, fatal: cycFatal, color: "#2ecc71" },
                 ].map(({ label, value, fatal: f, color }) => (
                   <div key={label} style={{ ...S.card, padding: "10px 12px", marginBottom: 0 }}>
                     <div style={{ ...S.sectionTitle, marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: "'Space Mono', monospace" }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>
                       {value.toLocaleString()}
                     </div>
                     {f > 0 && (

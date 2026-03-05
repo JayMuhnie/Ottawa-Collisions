@@ -44,7 +44,7 @@ export default function FilterBar({
 }) {
   const S = {
     group: { display: "flex", alignItems: "flex-start", gap: 8, flexWrap: "wrap" },
-    label: { fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", textTransform: "uppercase", whiteSpace: "nowrap", paddingTop: 4, fontFamily: "'Space Mono', monospace" },
+    label: { fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", textTransform: "uppercase", whiteSpace: "nowrap", paddingTop: 4, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" },
     divider: { width: 1, background: border, alignSelf: "stretch", margin: "0 4px" },
   };
 
@@ -91,8 +91,8 @@ export default function FilterBar({
                 const next = active ? filters.involvement.filter(v => v !== val) : [...filters.involvement, val];
                 onFiltersChange({ ...filters, involvement: next });
               }} style={{
-                background: active ? "#9b59b6" : "rgba(255,255,255,0.06)",
-                border: `1px solid ${active ? "#9b59b6" : border}`,
+                background: active ? "#2ecc71" : "rgba(255,255,255,0.06)",
+                border: `1px solid ${active ? "#2ecc71" : border}`,
                 borderRadius: 4, color: active ? "#fff" : "#bdc3c7",
                 padding: "3px 8px", fontSize: 11, cursor: "pointer",
                 fontWeight: active ? 700 : 400, transition: "all 0.15s",
@@ -120,7 +120,7 @@ export default function FilterBar({
       <div style={{ flex: 1 }} />
 
       {hasFilters && (
-        <div style={{ fontSize: 11, color: accent, fontFamily: "'Space Mono', monospace", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: 11, color: accent, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif", whiteSpace: "nowrap" }}>
           {filteredCount.toLocaleString()} / {totalCount.toLocaleString()} shown
         </div>
       )}

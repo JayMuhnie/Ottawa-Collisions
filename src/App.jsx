@@ -305,7 +305,7 @@ export default function App() {
         {/* Radius controls — only in radius mode */}
         {selectionMode === "radius" && (
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", fontFamily: "'Space Mono', monospace" }}>RADIUS</span>
+            <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>RADIUS</span>
             {RADIUS_PRESETS.map(({ label, km }) => (
               <button key={km} onClick={() => applyRadius(km)} style={{
                 background: !isCustomRadius && radiusKm === km ? accent : "rgba(255,255,255,0.06)",
@@ -329,7 +329,7 @@ export default function App() {
                   borderRadius: 4, color: "#ecf0f1",
                   padding: "4px 6px", fontSize: 11, width: 58,
                   outline: "none", textAlign: "right",
-                  fontFamily: "'Space Mono', monospace",
+                  fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
                 }}
                 onFocus={e => e.target.style.borderColor = accent}
               />
@@ -341,7 +341,7 @@ export default function App() {
         {/* Polygon hint + controls */}
         {selectionMode === "polygon" && drawMode && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ fontSize: 11, color: "#2ecc71", fontFamily: "'Space Mono', monospace" }}>
+            <div style={{ fontSize: 11, color: "#2ecc71", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>
               Click to add points · Double-click to finish
             </div>
             <button onClick={clearDraw} style={{
@@ -452,10 +452,10 @@ export default function App() {
               ))}
               <div style={{ borderTop: `1px solid ${border}`, marginTop: 6, paddingTop: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
-                  <span style={{ fontSize: 13 }}>🚶</span><span style={{ color: "#9b59b6" }}>Pedestrian involved</span>
+                  <span style={{ fontSize: 13 }}>🚶</span><span style={{ color: "#2ecc71" }}>Pedestrian involved</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13 }}>🚲</span><span style={{ color: "#9b59b6" }}>Cyclist involved</span>
+                  <span style={{ fontSize: 13 }}>🚲</span><span style={{ color: "#2ecc71" }}>Cyclist involved</span>
                 </div>
                 {outOfAreaIds.length > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
