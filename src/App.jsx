@@ -360,8 +360,6 @@ export default function App() {
             padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
             letterSpacing: "0.06em", opacity: geocoding ? 0.7 : 1,
           }}>{geocoding ? "…" : "SEARCH"}</button>
-        </div>
-
           <button onClick={() => { setShowBoundaryImport(b => !b); setBoundaryImportText(""); }} style={{
             background: showBoundaryImport ? "rgba(0,180,216,0.15)" : "rgba(255,255,255,0.05)",
             border: `1px solid ${showBoundaryImport ? accent : border}`,
