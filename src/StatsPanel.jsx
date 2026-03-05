@@ -36,7 +36,7 @@ const border = "rgba(255,255,255,0.08)";
 
 const TABS = ["Stats", "Locations"];
 
-export default function StatsPanel({ collisions, loading, onHighlightLocation, highlightGeoId }) {
+export default function StatsPanel({ collisions, loading, onHighlightLocation, highlightGeoId, onExcludedChange, excludedGeoIds }) {
   const [tab, setTab] = useState("Stats");
 
   if (loading) {
@@ -312,8 +312,10 @@ export default function StatsPanel({ collisions, loading, onHighlightLocation, h
         ) : (
           <RepeatLocations
             allLocations={allLocations}
-            onSelect={onHighlightLocation}
-            selectedGeoId={highlightGeoId}
+            onHighlight={onHighlightLocation}
+            highlightedGeoId={highlightGeoId}
+            excludedGeoIds={excludedGeoIds}
+            onExcludedChange={onExcludedChange}
           />
         )}
       </div>

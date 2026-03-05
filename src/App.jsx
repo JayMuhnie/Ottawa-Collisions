@@ -44,15 +44,25 @@ export default function App() {
   const [highlightGeoId, setHighlightGeoId] = useState(null);
   const [filters, setFilters] = useState({ years: [], types: [], severity: [], involvement: [] });
   const [outOfAreaIds, setOutOfAreaIds] = useState([]);
+  const [excludedGeoIds, setExcludedGeoIds] = useState(new Set());
 
   const allYears = useMemo(() => getUniqueYears(collisions), [collisions]);
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
-  const filteredCollisions = useMemo(() => applyFilters(collisions, filters), [collisions, filters]);
+  const filteredCollisions = useMemo(() => {
+    const filtered = applyFilters(collisions, filters);
+    if (excludedGeoIds.size === 0) return filtered;
+    return filtered.filter(f => {
+      const p = f.properties || {};
+      const key = p.Geo_ID || p.Location;
+      return !excludedGeoIds.has(key);
+    });
+  }, [collisions, filters, excludedGeoIds]);
 
   const resetState = () => {
     setFilters({ years: [], types: [], severity: [], involvement: [] });
     setHighlightGeoId(null);
     setOutOfAreaIds([]);
+    setExcludedGeoIds(new Set());
   };
 
   // After a spatial query, fetch any out-of-area collisions that share a Geo_ID
@@ -352,6 +362,12 @@ export default function App() {
           <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
           {selectionMode === "radius" && <span>{radiusLabel} radius ·</span>}
           <span><b>{filteredCollisions.length.toLocaleString()}</b> collisions</span>
+          {excludedGeoIds.size > 0 && (
+            <>
+              <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
+              <span style={{ color: "#e74c3c" }}>{excludedGeoIds.size} location{excludedGeoIds.size !== 1 ? "s" : ""} excluded</span>
+            </>
+          )}
           {outOfAreaIds.length > 0 && (
             <>
               <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
@@ -475,6 +491,8 @@ export default function App() {
             loading={loading}
             onHighlightLocation={setHighlightGeoId}
             highlightGeoId={highlightGeoId}
+            excludedGeoIds={excludedGeoIds}
+            onExcludedChange={setExcludedGeoIds}
           />
         </aside>
       </div>
