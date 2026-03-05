@@ -82,10 +82,18 @@ export default function App() {
   }, []);
 
   // ── Load via radius ───────────────────────────────────────────────
-  const loadCollisions = useCallback(async (lat, lng, km) => {
+  const loadCollisions = useCallback(async (lat, lng, km, restore = null) => {
     setLoading(true);
     setError(null);
-    resetState();
+    if (restore) {
+      // Restoring from saved settings — apply saved state instead of resetting
+      setFilters(restore.filters || { years: [], types: [], severity: [], involvement: [] });
+      setExcludedGeoIds(new Set(restore.excludedGeoIds || []));
+      setHighlightGeoId(null);
+      setOutOfAreaIds([]);
+    } else {
+      resetState();
+    }
     try {
       const spatial = await fetchCollisionsNear(lat, lng, km);
       const { features, outOfAreaIds } = await expandWithSameLocations(spatial);
@@ -101,10 +109,17 @@ export default function App() {
   }, [expandWithSameLocations]); // eslint-disable-line
 
   // ── Load via polygon ──────────────────────────────────────────────
-  const loadCollisionsInPolygon = useCallback(async (poly) => {
+  const loadCollisionsInPolygon = useCallback(async (poly, restore = null) => {
     setLoading(true);
     setError(null);
-    resetState();
+    if (restore) {
+      setFilters(restore.filters || { years: [], types: [], severity: [], involvement: [] });
+      setExcludedGeoIds(new Set(restore.excludedGeoIds || []));
+      setHighlightGeoId(null);
+      setOutOfAreaIds([]);
+    } else {
+      resetState();
+    }
     try {
       const { minLat, maxLat, minLng, maxLng } = polygonBbox(poly);
       const bbox = await fetchCollisionsInBbox(minLng, minLat, maxLng, maxLat);
@@ -164,8 +179,10 @@ export default function App() {
       reader.onload = (ev) => {
         try {
           const s = JSON.parse(ev.target.result);
-          if (s.filters) setFilters(s.filters);
-          if (s.excludedGeoIds) setExcludedGeoIds(new Set(s.excludedGeoIds));
+          const restore = {
+            filters: s.filters || { years: [], types: [], severity: [], involvement: [] },
+            excludedGeoIds: s.excludedGeoIds || [],
+          };
           if (s.boundary?.type === "radius") {
             const { lat, lng, radiusKm: km } = s.boundary;
             setSelectionMode("radius");
@@ -175,7 +192,7 @@ export default function App() {
             setRadiusKm(km);
             setRadiusInput(String(Math.round(km * 1000)));
             setLocationLabel(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-            loadCollisions(lat, lng, km);
+            loadCollisions(lat, lng, km, restore);
           } else if (s.boundary?.type === "polygon") {
             const verts = s.boundary.vertices;
             setSelectionMode("polygon");
@@ -183,7 +200,11 @@ export default function App() {
             setPolygon(verts);
             setSearchMarker(null);
             setLocationLabel(`Polygon · ${verts.length} vertices`);
-            loadCollisionsInPolygon(verts);
+            loadCollisionsInPolygon(verts, restore);
+          } else {
+            // No boundary — just restore filters/exclusions to current data
+            if (s.filters) setFilters(s.filters);
+            if (s.excludedGeoIds) setExcludedGeoIds(new Set(s.excludedGeoIds));
           }
           setSavedMsg("loaded");
           setTimeout(() => setSavedMsg(""), 2000);
