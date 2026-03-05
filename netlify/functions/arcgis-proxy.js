@@ -1,8 +1,7 @@
 const ARCGIS_BASE =
   "https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Collisions/FeatureServer/0/query";
 
-export const handler = async (event) => {
-  // Forward all query params straight to ArcGIS
+exports.handler = async function (event) {
   const params = new URLSearchParams(event.queryStringParameters || {});
 
   try {
@@ -21,6 +20,7 @@ export const handler = async (event) => {
   } catch (err) {
     return {
       statusCode: 502,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ error: err.message }),
     };
   }
