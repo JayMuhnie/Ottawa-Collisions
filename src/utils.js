@@ -12,7 +12,7 @@ export const CHART_PALETTE = [
   "#023e8a", "#90e0ef", "#ade8f4",
 ];
 
-const PROXY = "/.netlify/functions/arcgis-proxy";
+const DIRECT = "https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Collisions/FeatureServer/0/query";
 
 export async function fetchCollisionsNear(lat, lng, km) {
   const radiusDeg = km / 111;
@@ -35,7 +35,7 @@ export async function fetchCollisionsNear(lat, lng, km) {
     f: "geojson",
   });
 
-  const url = `${PROXY}?${params.toString()}`;
+  const url = `${DIRECT}?${params.toString()}`;
   console.log("Fetching:", url);
 
   const res = await fetch(url);
