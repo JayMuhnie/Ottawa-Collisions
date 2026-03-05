@@ -218,14 +218,22 @@ export default function App() {
   const radiusLabel = radiusKm < 1 ? `${Math.round(radiusKm * 1000)}m` : `${radiusKm % 1 === 0 ? radiusKm : radiusKm.toFixed(2)}km`;
 
   if (showReport) {
+    document.body.style.overflow = "auto";
+    document.documentElement.style.overflow = "auto";
     return (
       <ReportPage
         collisions={filteredCollisions}
         locationLabel={locationLabel}
-        onBack={() => setShowReport(false)}
+        onBack={() => {
+          document.body.style.overflow = "";
+          document.documentElement.style.overflow = "";
+          setShowReport(false);
+        }}
       />
     );
   }
+  document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0d0d1a" }}>

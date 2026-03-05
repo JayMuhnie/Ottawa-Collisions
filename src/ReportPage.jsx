@@ -67,7 +67,7 @@ const css = {
   },
   tdLabel: {
     textAlign: "left",
-    fontFamily: "'IBM Plex Sans', sans-serif",
+    fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
     fontSize: 12,
     fontWeight: 600,
     whiteSpace: "nowrap",
@@ -158,10 +158,10 @@ function CrossTab({ features, compact = false }) {
                     </td>
                   );
                 })}
-                <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: pedBySev[sev] ? "#a78bfa" : css.zero.color }}>
+                <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: pedBySev[sev] ? "#2ecc71" : css.zero.color }}>
                   {pedBySev[sev] || "—"}
                 </td>
-                <td style={{ ...css.td, color: cycBySev[sev] ? "#a78bfa" : css.zero.color }}>
+                <td style={{ ...css.td, color: cycBySev[sev] ? "#2ecc71" : css.zero.color }}>
                   {cycBySev[sev] || "—"}
                 </td>
                 {!compact && yearKeys.map(yr => (
@@ -180,8 +180,8 @@ function CrossTab({ features, compact = false }) {
             {types.map(t => (
               <td key={t} style={{ ...css.td, ...css.tdTotal, color: "#e8ecf8" }}>{colTotals[t] || "—"}</td>
             ))}
-            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: pedTotal ? "#a78bfa" : css.zero.color }}>{pedTotal || "—"}</td>
-            <td style={{ ...css.td, ...css.tdTotal, color: cycTotal ? "#a78bfa" : css.zero.color }}>{cycTotal || "—"}</td>
+            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
+            <td style={{ ...css.td, ...css.tdTotal, color: cycTotal ? "#2ecc71" : css.zero.color }}>{cycTotal || "—"}</td>
             {!compact && yearKeys.map(yr => (
               <td key={yr} style={{ ...css.td, ...css.tdTotal, borderLeft: yr === yearKeys[0] ? "2px solid #2a3350" : undefined, color: "#c8d0e8" }}>
                 {years[yr] || "—"}
@@ -240,8 +240,8 @@ function SummaryTable({ locations }) {
                     {sevCounts[s] || "—"}
                   </td>
                 ))}
-                <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: pedTotal ? "#a78bfa" : css.zero.color }}>{pedTotal || "—"}</td>
-                <td style={{ ...css.td, color: cycTotal ? "#a78bfa" : css.zero.color }}>{cycTotal || "—"}</td>
+                <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
+                <td style={{ ...css.td, color: cycTotal ? "#2ecc71" : css.zero.color }}>{cycTotal || "—"}</td>
                 <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#e8ecf8" }}>{loc.features.length}</td>
               </tr>
             );
@@ -254,10 +254,10 @@ function SummaryTable({ locations }) {
               const n = allFeatures.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === s).length;
               return <td key={s} style={{ ...css.td, ...css.tdTotal, color: n ? SEV_COLORS[s] : css.zero.color }}>{n || "—"}</td>;
             })}
-            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#a78bfa" }}>
+            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#2ecc71" }}>
               {allFeatures.filter(f => involvementFlags(f.properties || {}).ped).length || "—"}
             </td>
-            <td style={{ ...css.td, ...css.tdTotal, color: "#a78bfa" }}>
+            <td style={{ ...css.td, ...css.tdTotal, color: "#2ecc71" }}>
               {allFeatures.filter(f => involvementFlags(f.properties || {}).cyc).length || "—"}
             </td>
             <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#e8ecf8", fontWeight: 700, fontSize: 13 }}>{allFeatures.length}</td>
@@ -289,12 +289,12 @@ function LocationDetail({ loc, index }) {
         {(pedTotal > 0 || cycTotal > 0) && (
           <div style={{ display: "flex", gap: 10 }}>
             {pedTotal > 0 && (
-              <span style={{ fontSize: 11, color: "#a78bfa", background: "rgba(167,139,250,0.1)", borderRadius: 4, padding: "2px 8px" }}>
+              <span style={{ fontSize: 11, color: "#2ecc71", background: "rgba(46,204,113,0.1)", borderRadius: 4, padding: "2px 8px" }}>
                 🚶 {pedTotal} ped{pedFatal > 0 ? `, ${pedFatal} fatal` : ""}
               </span>
             )}
             {cycTotal > 0 && (
-              <span style={{ fontSize: 11, color: "#a78bfa", background: "rgba(167,139,250,0.1)", borderRadius: 4, padding: "2px 8px" }}>
+              <span style={{ fontSize: 11, color: "#2ecc71", background: "rgba(46,204,113,0.1)", borderRadius: 4, padding: "2px 8px" }}>
                 🚲 {cycTotal} cyc{cycFatal > 0 ? `, ${cycFatal} fatal` : ""}
               </span>
             )}
@@ -336,12 +336,13 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
     <div style={{
       minHeight: "100vh",
       background: "#0d1117",
-      fontFamily: "'IBM Plex Sans', 'Helvetica Neue', sans-serif",
+      fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
       color: "#c8d0e8",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
         * { box-sizing: border-box; }
+        body { font-family: 'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif !important; }
         @media print {
           .no-print { display: none !important; }
           body { background: #0d1117 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #c8d0e8 !important; }
@@ -395,8 +396,8 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
               { label: "Fatal",     value: totalFatal,         color: "#e74c3c" },
               { label: "Injury",    value: totalInjury,        color: "#e67e22" },
               { label: "Locations", value: locations.length,   color: "#3d7de8" },
-              { label: "🚶 Ped",   value: totalPed,            color: "#a78bfa" },
-              { label: "🚲 Cyc",   value: totalCyc,            color: "#a78bfa" },
+              { label: "🚶 Ped",   value: totalPed,            color: "#2ecc71" },
+              { label: "🚲 Cyc",   value: totalCyc,            color: "#2ecc71" },
             ].map(({ label, value, color }) => (
               <div key={label} style={{
                 background: "rgba(255,255,255,0.03)", border: "1px solid #1e2535",
@@ -423,7 +424,7 @@ export default function ReportPage({ collisions, locationLabel, onBack }) {
 
         {/* ── Section 2: Per-location cross-tabs ── */}
         <h2 style={{ fontSize: 13, fontWeight: 700, color: "#8b9cc8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 24, marginTop: 0 }}>
-          Location Breakdown — Severity × Collision Type
+          Location Breakdown
         </h2>
         {locations.map((loc, i) => (
           <LocationDetail key={loc.key} loc={loc} index={i} />
