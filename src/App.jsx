@@ -194,7 +194,8 @@ export default function App() {
     input.click();
   }, [loadCollisions, loadCollisionsInPolygon]); // eslint-disable-line
 
-  // ── Polygon drawn callback ──────────────────────────────────────── = useCallback((verts) => {
+  // ── Polygon drawn callback ────────────────────────────────────────
+  const handlePolygonComplete = useCallback((verts) => {
     setPolygon(verts);
     setDrawMode(false);
     setSearchMarker(null);
