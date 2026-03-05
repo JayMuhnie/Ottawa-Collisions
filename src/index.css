@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: #0d0d1a;
+  color: #ecf0f1;
+  font-family: 'Space Mono', monospace;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+input, button {
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.leaflet-container {
+  background: #0d0d1a;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.leaflet-popup-content {
+  color: #ecf0f1;
+  margin: 12px 14px;
+}
+
+.leaflet-popup-tip {
+  background: #1a1a2e;
+}
+
+.leaflet-popup-close-button {
+  color: #7f8c8d !important;
+}

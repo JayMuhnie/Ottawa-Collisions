@@ -1,0 +1,10 @@
+[build]
+  # If you pushed the "ottawa-collisions" folder inside a repo (not as the root), uncomment:
+  # base = "ottawa-collisions"
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
