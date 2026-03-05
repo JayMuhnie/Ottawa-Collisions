@@ -36,7 +36,7 @@ const border = "rgba(255,255,255,0.08)";
 
 const TABS = ["Stats", "Locations"];
 
-export default function StatsPanel({ collisions, loading, onHighlightLocation, highlightGeoId, onExcludedChange, excludedGeoIds }) {
+export default function StatsPanel({ collisions, allCollisions, loading, onHighlightLocation, highlightGeoId, onExcludedChange, excludedGeoIds }) {
   const [tab, setTab] = useState("Stats");
 
   if (loading) {
@@ -61,7 +61,8 @@ export default function StatsPanel({ collisions, loading, onHighlightLocation, h
   }
 
   const props = collisions.map((f) => f.properties || {});
-  const allLocations = getAllLocations(collisions);
+  // allLocations uses the pre-exclusion list so excluded cards stay visible
+  const allLocations = getAllLocations(allCollisions || collisions);
   const repeatCount = allLocations.filter(l => l.features.length > 1).length;
 
   // Involvement counts

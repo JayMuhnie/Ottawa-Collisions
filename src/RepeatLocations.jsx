@@ -122,9 +122,15 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
 export default function RepeatLocations({ allLocations, onHighlight, highlightedGeoId, excludedGeoIds, onExcludedChange }) {
   const [repeatOnly, setRepeatOnly] = useState(false);
 
-  const displayed = repeatOnly
+  const base = repeatOnly
     ? allLocations.filter(l => l.features.length > 1)
     : allLocations;
+
+  // Excluded locations sink to the bottom
+  const displayed = [
+    ...base.filter(l => !excludedGeoIds.has(l.geoId || l.key)),
+    ...base.filter(l => excludedGeoIds.has(l.geoId || l.key)),
+  ];
 
   const repeatCount = allLocations.filter(l => l.features.length > 1).length;
   const excludedCount = excludedGeoIds.size;

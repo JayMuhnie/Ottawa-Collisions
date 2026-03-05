@@ -488,6 +488,7 @@ export default function App() {
         }}>
           <StatsPanel
             collisions={filteredCollisions}
+            allCollisions={collisions}
             loading={loading}
             onHighlightLocation={setHighlightGeoId}
             highlightGeoId={highlightGeoId}
