@@ -223,7 +223,7 @@ export function getRepeatLocations(features) {
   return getAllLocations(features).filter(l => l.features.length > 1);
 }
 
-// Export all raw API fields as-is + lat/lng from geometry
+// Export all raw API fields as-is
 export function exportToCSV(features, filename = "ottawa-collisions.csv") {
   if (!features.length) return;
 
@@ -236,8 +236,6 @@ export function exportToCSV(features, filename = "ottawa-collisions.csv") {
     });
   });
 
-  const allHeaders = [...rawKeys, "Latitude", "Longitude"];
-
   const escapeCell = (v) => {
     if (v === null || v === undefined) return "";
     const s = String(v);
@@ -247,11 +245,10 @@ export function exportToCSV(features, filename = "ottawa-collisions.csv") {
 
   const rows = features.map(f => {
     const p = f.properties || {};
-    const coords = f.geometry?.coordinates || [];
-    return [...rawKeys.map(k => escapeCell(p[k])), escapeCell(coords[1]), escapeCell(coords[0])].join(",");
+    return rawKeys.map(k => escapeCell(p[k])).join(",");
   });
 
-  const csv = [allHeaders.join(","), ...rows].join("\n");
+  const csv = [rawKeys.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
