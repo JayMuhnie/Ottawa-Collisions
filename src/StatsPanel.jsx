@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { SEVERITY_COLORS, CHART_PALETTE, severityLabel, collisionTypeLabel, extractYear, getAllLocations, exportToCSV } from "./utils";
+import { SEVERITY_COLORS, CHART_PALETTE, severityLabel, collisionTypeLabel, extractYear, getAllLocations, exportToCSV, involvementFlags } from "./utils";
 import RepeatLocations from "./RepeatLocations";
 
 const S = {
@@ -63,6 +63,15 @@ export default function StatsPanel({ collisions, loading, onHighlightLocation, h
   const props = collisions.map((f) => f.properties || {});
   const allLocations = getAllLocations(collisions);
   const repeatCount = allLocations.filter(l => l.features.length > 1).length;
+
+  // Involvement counts
+  let pedCount = 0, cycCount = 0, pedFatal = 0, cycFatal = 0;
+  props.forEach(p => {
+    const { ped, cyc } = involvementFlags(p);
+    const sev = severityLabel(p.Classification_Of_Accident);
+    if (ped) { pedCount++; if (sev === "Fatal") pedFatal++; }
+    if (cyc) { cycCount++; if (sev === "Fatal") cycFatal++; }
+  });
 
   // Severity
   const severityCounts = {};
@@ -189,6 +198,29 @@ export default function StatsPanel({ collisions, loading, onHighlightLocation, h
                 </div>
               ))}
             </div>
+
+            {/* Pedestrian / Cyclist KPIs */}
+            {(pedCount > 0 || cycCount > 0) && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                {[
+                  { label: "🚶 Pedestrian", value: pedCount, fatal: pedFatal, color: "#9b59b6" },
+                  { label: "🚲 Cyclist", value: cycCount, fatal: cycFatal, color: "#9b59b6" },
+                ].map(({ label, value, fatal: f, color }) => (
+                  <div key={label} style={{ ...S.card, padding: "10px 12px", marginBottom: 0 }}>
+                    <div style={{ ...S.sectionTitle, marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: "'Space Mono', monospace" }}>
+                      {value.toLocaleString()}
+                    </div>
+                    {f > 0 && (
+                      <div style={{ fontSize: 10, color: "#e74c3c", marginTop: 2 }}>{f} fatal</div>
+                    )}
+                    <div style={{ fontSize: 10, color: "#7f8c8d", marginTop: 2 }}>
+                      {collisions.length > 0 ? `${((value / collisions.length) * 100).toFixed(1)}% of total` : ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Severity pie */}
             <div style={S.card}>

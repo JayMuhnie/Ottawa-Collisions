@@ -7,11 +7,12 @@ import { fetchCollisionsNear, geocodeAddress, getUniqueYears, getUniqueTypes, ap
 const accent = "#00b4d8";
 const border = "rgba(255,255,255,0.08)";
 
-const RADIUS_OPTIONS = [
+const RADIUS_PRESETS = [
   { label: "250m", km: 0.25 },
   { label: "500m", km: 0.5 },
   { label: "1km", km: 1 },
   { label: "2km", km: 2 },
+  { label: "5km", km: 5 },
 ];
 
 export default function App() {
@@ -20,24 +21,22 @@ export default function App() {
   const [error, setError] = useState(null);
   const [searchMarker, setSearchMarker] = useState(null);
   const [radiusKm, setRadiusKm] = useState(0.5);
+  const [radiusInput, setRadiusInput] = useState("500");
   const [addressInput, setAddressInput] = useState("");
   const [geocoding, setGeocoding] = useState(false);
   const [locationLabel, setLocationLabel] = useState("");
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [highlightGeoId, setHighlightGeoId] = useState(null);
-  const [filters, setFilters] = useState({ years: [], types: [], severity: [] });
+  const [filters, setFilters] = useState({ years: [], types: [], severity: [], involvement: [] });
 
-  // Derived: available filter options from raw data
   const allYears = useMemo(() => getUniqueYears(collisions), [collisions]);
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
-
-  // Derived: filtered collisions
   const filteredCollisions = useMemo(() => applyFilters(collisions, filters), [collisions, filters]);
 
   const loadCollisions = useCallback(async (lat, lng, km) => {
     setLoading(true);
     setError(null);
-    setFilters({ years: [], types: [], severity: [] });
+    setFilters({ years: [], types: [], severity: [], involvement: [] });
     setHighlightGeoId(null);
     try {
       const features = await fetchCollisionsNear(lat, lng, km);
@@ -49,6 +48,20 @@ export default function App() {
       setLoading(false);
     }
   }, []);
+
+  const applyRadius = (km) => {
+    setRadiusKm(km);
+    setRadiusInput(String(Math.round(km * 1000)));
+    if (searchMarker) loadCollisions(searchMarker.lat, searchMarker.lng, km);
+  };
+
+  const handleRadiusCommit = () => {
+    const n = parseFloat(radiusInput);
+    if (isNaN(n) || n <= 0) { setRadiusInput(String(Math.round(radiusKm * 1000))); return; }
+    const km = Math.min(Math.max(n / 1000, 0.05), 20);
+    setRadiusKm(km);
+    if (searchMarker) loadCollisions(searchMarker.lat, searchMarker.lng, km);
+  };
 
   const handleMapClick = useCallback((lat, lng) => {
     setSearchMarker({ lat, lng });
@@ -72,23 +85,16 @@ export default function App() {
     }
   }, [addressInput, radiusKm, loadCollisions]);
 
-  const handleRadiusChange = (km) => {
-    setRadiusKm(km);
-    if (searchMarker) loadCollisions(searchMarker.lat, searchMarker.lng, km);
-  };
+  const radiusLabel = radiusKm < 1 ? `${Math.round(radiusKm * 1000)}m` : `${radiusKm % 1 === 0 ? radiusKm : radiusKm.toFixed(2)}km`;
+  const isCustomRadius = !RADIUS_PRESETS.some(p => p.km === radiusKm);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0d0d1a" }}>
-      {/* ── Header ── */}
+      {/* Header */}
       <header style={{
-        background: "#111124",
-        borderBottom: `1px solid ${border}`,
-        padding: "10px 18px",
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-        flexShrink: 0,
-        flexWrap: "wrap",
+        background: "#111124", borderBottom: `1px solid ${border}`,
+        padding: "10px 18px", display: "flex", alignItems: "center",
+        gap: 14, flexShrink: 0, flexWrap: "wrap",
       }}>
         <div style={{ marginRight: 8 }}>
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.07em", color: accent }}>
@@ -99,73 +105,94 @@ export default function App() {
           </div>
         </div>
         <div style={{ flex: 1 }} />
+
+        {/* Search */}
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <input
             value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            onChange={e => setAddressInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleSearch()}
             placeholder="Search address or intersection…"
             style={{
               background: "rgba(255,255,255,0.06)", border: `1px solid ${border}`,
               borderRadius: 6, color: "#ecf0f1", padding: "7px 12px",
-              fontSize: 13, width: 280, outline: "none", transition: "border-color 0.2s",
+              fontSize: 13, width: 250, outline: "none",
             }}
-            onFocus={(e) => (e.target.style.borderColor = accent)}
-            onBlur={(e) => (e.target.style.borderColor = border)}
+            onFocus={e => e.target.style.borderColor = accent}
+            onBlur={e => e.target.style.borderColor = border}
           />
           <button onClick={handleSearch} disabled={geocoding || loading} style={{
             background: accent, border: "none", borderRadius: 6, color: "#000",
-            padding: "7px 16px", fontSize: 12, fontWeight: 700,
-            cursor: geocoding ? "wait" : "pointer", letterSpacing: "0.06em",
-            opacity: geocoding ? 0.7 : 1, transition: "opacity 0.2s",
+            padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+            letterSpacing: "0.06em", opacity: geocoding ? 0.7 : 1,
           }}>
             {geocoding ? "…" : "SEARCH"}
           </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#7f8c8d" }}>
-          <span style={{ letterSpacing: "0.1em" }}>RADIUS</span>
-          {RADIUS_OPTIONS.map(({ label, km }) => (
-            <button key={km} onClick={() => handleRadiusChange(km)} style={{
-              background: radiusKm === km ? accent : "rgba(255,255,255,0.06)",
+
+        {/* Radius */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", fontFamily: "'Space Mono', monospace" }}>RADIUS</span>
+          {RADIUS_PRESETS.map(({ label, km }) => (
+            <button key={km} onClick={() => applyRadius(km)} style={{
+              background: !isCustomRadius && radiusKm === km ? accent : "rgba(255,255,255,0.06)",
               border: "none", borderRadius: 4,
-              color: radiusKm === km ? "#000" : "#bdc3c7",
-              padding: "5px 9px", fontSize: 11, cursor: "pointer",
-              fontWeight: radiusKm === km ? 700 : 400, transition: "all 0.15s",
-            }}>
-              {label}
-            </button>
+              color: !isCustomRadius && radiusKm === km ? "#000" : "#bdc3c7",
+              padding: "5px 8px", fontSize: 11, cursor: "pointer",
+              fontWeight: !isCustomRadius && radiusKm === km ? 700 : 400,
+            }}>{label}</button>
           ))}
+          {/* Custom metres input */}
+          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <input
+              value={radiusInput}
+              onChange={e => setRadiusInput(e.target.value)}
+              onBlur={handleRadiusCommit}
+              onKeyDown={e => e.key === "Enter" && handleRadiusCommit()}
+              placeholder="e.g. 750"
+              title="Custom radius in metres — press Enter or click away to apply"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: `1px solid ${isCustomRadius ? accent : border}`,
+                borderRadius: 4, color: "#ecf0f1",
+                padding: "4px 6px", fontSize: 11, width: 58,
+                outline: "none", textAlign: "right",
+                fontFamily: "'Space Mono', monospace",
+              }}
+              onFocus={e => e.target.style.borderColor = accent}
+            />
+            <span style={{ fontSize: 10, color: "#7f8c8d" }}>m</span>
+          </div>
         </div>
       </header>
 
-      {/* ── Error Banner ── */}
+      {/* Error */}
       {error && (
         <div style={{
           background: "rgba(231,76,60,0.12)", borderBottom: "1px solid rgba(231,76,60,0.25)",
           padding: "8px 18px", fontSize: 12, color: "#e74c3c",
-          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+          display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
           <span>⚠ {error}</span>
           <button onClick={() => setError(null)} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
       )}
 
-      {/* ── Location bar ── */}
+      {/* Location bar */}
       {locationLabel && (
         <div style={{
           background: "rgba(0,180,216,0.07)", borderBottom: "1px solid rgba(0,180,216,0.15)",
-          padding: "5px 18px", fontSize: 11, color: accent,
-          display: "flex", gap: 12,
+          padding: "5px 18px", fontSize: 11, color: accent, display: "flex", gap: 12,
         }}>
           <span>📍 {locationLabel}</span>
           <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
-          <span>{radiusKm < 1 ? `${radiusKm * 1000}m` : `${radiusKm}km`} radius</span>
+          <span>{radiusLabel} radius</span>
           <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
           <span><b>{filteredCollisions.length.toLocaleString()}</b> collisions</span>
         </div>
       )}
 
-      {/* ── Filter Bar (only when data loaded) ── */}
+      {/* Filter bar */}
       {collisions.length > 0 && (
         <FilterBar
           allYears={allYears}
@@ -179,9 +206,8 @@ export default function App() {
         />
       )}
 
-      {/* ── Main ── */}
+      {/* Main */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Map */}
         <div style={{ flex: 1, position: "relative" }}>
           <CollisionMap
             collisions={filteredCollisions}
@@ -192,7 +218,7 @@ export default function App() {
             highlightGeoId={highlightGeoId}
           />
 
-          {/* Legend — hide when heatmap active */}
+          {/* Dot legend */}
           {!showHeatmap && (
             <div style={{
               position: "absolute", bottom: 24, left: 12,
@@ -201,13 +227,19 @@ export default function App() {
               backdropFilter: "blur(4px)", zIndex: 1000,
             }}>
               {[["Fatal","#e74c3c"],["Non-fatal Injury","#e67e22"],["Property Damage Only","#3498db"],["Unknown","#95a5a6"]].map(([label, color]) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <div style={{ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0 }} />
                   <span style={{ color: "#bdc3c7" }}>{label}</span>
                 </div>
               ))}
-              <div style={{ borderTop: `1px solid ${border}`, marginTop: 7, paddingTop: 7, color: "#7f8c8d", fontSize: 10 }}>
-                🟡 Search point · click map to query
+              <div style={{ borderTop: `1px solid ${border}`, marginTop: 6, paddingTop: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+                  <span style={{ fontSize: 13 }}>🚶</span><span style={{ color: "#9b59b6" }}>Pedestrian involved</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                  <span style={{ fontSize: 13 }}>🚲</span><span style={{ color: "#9b59b6" }}>Cyclist involved</span>
+                </div>
+                <div style={{ color: "#7f8c8d", fontSize: 10 }}>🟡 Search point · click map to query</div>
               </div>
             </div>
           )}
@@ -221,10 +253,8 @@ export default function App() {
               backdropFilter: "blur(4px)", zIndex: 1000,
             }}>
               <div style={{ fontSize: 10, color: "#7f8c8d", letterSpacing: "0.1em", marginBottom: 8 }}>COLLISION DENSITY</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 80, height: 8, borderRadius: 4, background: "linear-gradient(to right, #023e8a, #0077b6, #f1c40f, #e67e22, #e74c3c)" }} />
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#7f8c8d", marginTop: 3 }}>
+              <div style={{ width: 80, height: 8, borderRadius: 4, background: "linear-gradient(to right, #023e8a, #0077b6, #f1c40f, #e67e22, #e74c3c)", marginBottom: 3 }} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#7f8c8d" }}>
                 <span>Low</span><span>High</span>
               </div>
               <div style={{ marginTop: 6, fontSize: 9, color: "#7f8c8d" }}>Fatal weighted higher</div>
@@ -238,8 +268,7 @@ export default function App() {
               transform: "translate(-50%, -50%)",
               background: "rgba(13,13,26,0.88)", border: `1px solid ${border}`,
               borderRadius: 12, padding: "18px 24px", fontSize: 13,
-              color: "#7f8c8d", textAlign: "center",
-              pointerEvents: "none", lineHeight: 1.8, zIndex: 1000,
+              color: "#7f8c8d", textAlign: "center", pointerEvents: "none", lineHeight: 1.8, zIndex: 1000,
             }}>
               Click anywhere on the map<br />or search an address above
             </div>
@@ -252,9 +281,7 @@ export default function App() {
           borderLeft: `1px solid ${border}`,
           padding: "14px 12px",
           overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
+          display: "flex", flexDirection: "column", flexShrink: 0,
         }}>
           <StatsPanel
             collisions={filteredCollisions}

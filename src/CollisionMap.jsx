@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
-import { OTTAWA_CENTER, SEVERITY_COLORS, severityLabel, collisionTypeLabel, getLatLng } from "./utils";
+import { OTTAWA_CENTER, SEVERITY_COLORS, severityLabel, collisionTypeLabel, getLatLng, involvementLabel } from "./utils";
 
 export default function CollisionMap({
   collisions, onMapClick, searchMarker, radiusKm,
@@ -87,20 +87,42 @@ export default function CollisionMap({
         const sev = severityLabel(p.Classification_Of_Accident);
         const color = SEVERITY_COLORS[sev] || "#95a5a6";
         const isFatal = sev === "Fatal";
-        const marker = L.circleMarker([pos.lat, pos.lng], {
-          radius: isFatal ? 7 : 4,
-          fillColor: color,
-          color: isFatal ? "#fff" : color,
-          weight: isFatal ? 1.5 : 0.8,
-          opacity: 0.9,
-          fillOpacity: 0.75,
-        });
+        const involvement = involvementLabel(p);
+        const hasPed = involvement && involvement.includes("Pedestrian");
+        const hasCyc = involvement && involvement.includes("Cyclist");
+
+        // Use a special icon for pedestrian/cyclist collisions
+        let marker;
+        if (hasPed || hasCyc) {
+          const emoji = hasPed && hasCyc ? "🚶🚲" : hasPed ? "🚶" : "🚲";
+          marker = L.marker([pos.lat, pos.lng], {
+            icon: L.divIcon({
+              html: `<div style="font-size:${isFatal ? 18 : 14}px;line-height:1;filter:drop-shadow(0 0 3px ${color});">${emoji}</div>`,
+              iconSize: [isFatal ? 22 : 18, isFatal ? 22 : 18],
+              iconAnchor: [isFatal ? 11 : 9, isFatal ? 11 : 9],
+              className: "",
+            })
+          });
+        } else {
+          marker = L.circleMarker([pos.lat, pos.lng], {
+            radius: isFatal ? 7 : 4,
+            fillColor: color,
+            color: isFatal ? "#fff" : color,
+            weight: isFatal ? 1.5 : 0.8,
+            opacity: 0.9,
+            fillOpacity: 0.75,
+          });
+        }
+        const involveLine = involvement
+          ? `<div style="color:#9b59b6;font-weight:700">👤 ${involvement}</div>`
+          : "";
         marker.bindPopup(`
           <div style="font-family:'Space Mono',monospace;font-size:12px;min-width:200px;line-height:1.8">
             <div style="color:${color};font-weight:700;font-size:13px;margin-bottom:4px">${sev}</div>
             <div>📅 ${p.Accident_Date || "N/A"}</div>
             <div>🛣 ${p.Location || "N/A"}</div>
             <div>💥 ${collisionTypeLabel(p.Initial_Impact_Type)}</div>
+            ${involveLine}
             <div>🌧 ${p.Environment_Condition_1 || "N/A"}</div>
             <div>🛤 ${p.Road_1_Surface_Condition || "N/A"}</div>
           </div>

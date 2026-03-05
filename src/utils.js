@@ -119,6 +119,21 @@ export function getUniqueTypes(features) {
   return Array.from(types).sort();
 }
 
+// Check if a collision involves a pedestrian or cyclist
+export function involvementFlags(props) {
+  const ped = parseInt(props.num_of_pedestrians) > 0;
+  const cyc = parseInt(props.num_of_bicycles) > 0;
+  return { ped, cyc };
+}
+
+export function involvementLabel(props) {
+  const { ped, cyc } = involvementFlags(props);
+  if (ped && cyc) return "Pedestrian + Cyclist";
+  if (ped) return "Pedestrian";
+  if (cyc) return "Cyclist";
+  return null;
+}
+
 // Apply filters to a feature list
 export function applyFilters(features, filters) {
   return features.filter(f => {
@@ -134,6 +149,11 @@ export function applyFilters(features, filters) {
     if (filters.severity.length > 0) {
       const s = severityLabel(p.Classification_Of_Accident);
       if (!filters.severity.includes(s)) return false;
+    }
+    if (filters.involvement && filters.involvement.length > 0) {
+      const { ped, cyc } = involvementFlags(p);
+      const match = filters.involvement.some(v => (v === "pedestrian" && ped) || (v === "cyclist" && cyc));
+      if (!match) return false;
     }
     return true;
   });
@@ -179,6 +199,7 @@ export function exportToCSV(features, filename = "ottawa-collisions.csv") {
     "Severity", "Collision_Type", "Road_Surface",
     "Weather", "Light", "Traffic_Control",
     "Num_Vehicles", "Num_Pedestrians", "Num_Bicycles",
+    "Involves_Pedestrian", "Involves_Cyclist",
     "Num_Injuries", "Num_Fatal",
     "Latitude", "Longitude",
   ];
@@ -193,6 +214,7 @@ export function exportToCSV(features, filename = "ottawa-collisions.csv") {
   const rows = features.map(f => {
     const p = f.properties || {};
     const coords = f.geometry?.coordinates || [];
+    const { ped, cyc } = involvementFlags(p);
     return [
       escape(p.Accident_Date),
       escape(p.Accident_Year),
@@ -207,6 +229,8 @@ export function exportToCSV(features, filename = "ottawa-collisions.csv") {
       escape(p.num_of_vehicles),
       escape(p.num_of_pedestrians),
       escape(p.num_of_bicycles),
+      ped ? "Yes" : "No",
+      cyc ? "Yes" : "No",
       escape(p.num_of_injuries),
       escape(p.num_of_fatal),
       escape(coords[1]),
