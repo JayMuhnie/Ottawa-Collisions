@@ -356,16 +356,24 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
       color: "#dce4f0",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
         * { box-sizing: border-box; }
         body { font-family: 'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif !important; }
         @media print {
           .no-print { display: none !important; }
-          body { background: #0d1117 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #dce4f0 !important; }
+          html, body, #root {
+            overflow: visible !important;
+            height: auto !important;
+            background: #0d1117 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color: #dce4f0 !important;
+          }
           @page { margin: 12mm 14mm; size: letter landscape; }
           h1 { font-size: 18pt !important; }
           h2 { font-size: 12pt !important; }
           h3 { font-size: 10pt !important; }
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; }
         }
       `}</style>
 
@@ -403,19 +411,6 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "#e8ecf8" }}>
             Collision Summary Report
           </h1>
-
-          {/* Boundary reproduction info */}
-          {boundaryText && (
-            <div style={{
-              marginTop: 10, padding: "8px 12px",
-              background: "rgba(255,255,255,0.03)", border: "1px solid #1e2535",
-              borderRadius: 6, fontSize: 11, color: "#7a8fa8",
-              fontFamily: "monospace",
-            }}>
-              <span style={{ color: "#a8b8cc", fontWeight: 600, fontFamily: "inherit" }}>Boundary: </span>
-              {boundaryText}
-            </div>
-          )}
 
           {/* KPI row */}
           <div style={{ display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap" }}>

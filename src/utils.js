@@ -286,31 +286,9 @@ export function getRepeatLocations(features) {
   return getAllLocations(features).filter(l => l.features.length > 1);
 }
 
-// Export all raw API fields as-is, with optional boundary metadata header
-export function exportToCSV(features, filename = "ottawa-collisions.csv", boundary = null) {
+// Export all raw API fields as-is
+export function exportToCSV(features, filename = "ottawa-collisions.csv") {
   if (!features.length) return;
-
-  // Build boundary metadata comment rows
-  const metaRows = [];
-  metaRows.push(`# Ottawa Collision Export — ${new Date().toLocaleDateString("en-CA")}`);
-  if (boundary) {
-    if (boundary.type === "radius") {
-      metaRows.push(`# Boundary type: Radius`);
-      metaRows.push(`# Centre latitude: ${boundary.lat}`);
-      metaRows.push(`# Centre longitude: ${boundary.lng}`);
-      metaRows.push(`# Radius (km): ${boundary.radiusKm}`);
-      metaRows.push(`# To reproduce: search lat=${boundary.lat} lng=${boundary.lng} radius=${boundary.radiusKm}km`);
-    } else if (boundary.type === "polygon") {
-      metaRows.push(`# Boundary type: Polygon`);
-      metaRows.push(`# Vertex count: ${boundary.vertices.length}`);
-      boundary.vertices.forEach(([lat, lng], i) => {
-        metaRows.push(`# Vertex ${i + 1}: ${lat},${lng}`);
-      });
-      metaRows.push(`# To reproduce: polygon vertices (lat,lng) — ${boundary.vertices.map(([a,b]) => `${a},${b}`).join(" | ")}`);
-    }
-  }
-  metaRows.push(`# Total records: ${features.length}`);
-  metaRows.push(`#`);
 
   // Collect every property key across all features, preserving first-seen order
   const rawKeys = [];
@@ -333,7 +311,7 @@ export function exportToCSV(features, filename = "ottawa-collisions.csv", bounda
     return rawKeys.map(k => escapeCell(p[k])).join(",");
   });
 
-  const csv = [...metaRows, rawKeys.join(","), ...rows].join("\n");
+  const csv = [rawKeys.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

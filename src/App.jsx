@@ -354,9 +354,6 @@ export default function App() {
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.07em", color: accent }}>
             CITY OF OTTAWA COLLISIONS (OPEN DATA)
           </div>
-          <div style={{ fontSize: 10, color: "#9aa8b8", letterSpacing: "0.08em" }}>
-            Traffic Safety Intelligence · 2017–present
-          </div>
         </div>
         <div style={{ flex: 1 }} />
 
