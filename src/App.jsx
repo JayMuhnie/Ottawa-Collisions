@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import CollisionMap from "./CollisionMap";
 import StatsPanel from "./StatsPanel";
 import FilterBar from "./FilterBar";
+import ReportPage from "./ReportPage";
 import {
   fetchCollisionsNear, fetchCollisionsInBbox, geocodeAddress,
   getUniqueYears, getUniqueTypes, applyFilters,
@@ -45,6 +46,7 @@ export default function App() {
   const [filters, setFilters] = useState({ years: [], types: [], severity: [], involvement: [] });
   const [outOfAreaIds, setOutOfAreaIds] = useState([]);
   const [excludedGeoIds, setExcludedGeoIds] = useState(new Set());
+  const [showReport, setShowReport] = useState(false);
 
   const allYears = useMemo(() => getUniqueYears(collisions), [collisions]);
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
@@ -214,6 +216,16 @@ export default function App() {
 
   const isCustomRadius = !RADIUS_PRESETS.some(p => p.km === radiusKm);
   const radiusLabel = radiusKm < 1 ? `${Math.round(radiusKm * 1000)}m` : `${radiusKm % 1 === 0 ? radiusKm : radiusKm.toFixed(2)}km`;
+
+  if (showReport) {
+    return (
+      <ReportPage
+        collisions={filteredCollisions}
+        locationLabel={locationLabel}
+        onBack={() => setShowReport(false)}
+      />
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0d0d1a" }}>
@@ -486,6 +498,22 @@ export default function App() {
           overflow: "hidden",
           display: "flex", flexDirection: "column", flexShrink: 0,
         }}>
+          {filteredCollisions.length > 0 && (
+            <button onClick={() => setShowReport(true)} style={{
+              background: "linear-gradient(135deg, #1a4fa8, #0d8a6e)",
+              border: "none", borderRadius: 7, color: "#fff",
+              padding: "9px 14px", fontSize: 12, fontWeight: 600,
+              cursor: "pointer", marginBottom: 12, flexShrink: 0,
+              letterSpacing: "0.04em", display: "flex", alignItems: "center",
+              justifyContent: "center", gap: 8,
+              boxShadow: "0 2px 12px rgba(29,107,187,0.3)",
+            }}>
+              ⎙ Generate Report
+              <span style={{ opacity: 0.7, fontWeight: 400, fontSize: 11 }}>
+                {filteredCollisions.length} collisions · {[...new Set(filteredCollisions.map(f => f.properties?.Geo_ID || f.properties?.Location).filter(Boolean))].length} locations
+              </span>
+            </button>
+          )}
           <StatsPanel
             collisions={filteredCollisions}
             allCollisions={collisions}
