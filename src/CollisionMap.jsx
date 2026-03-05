@@ -6,6 +6,7 @@ export default function CollisionMap({
   collisions, onMapClick, searchMarker, radiusKm,
   showHeatmap, highlightGeoId,
   drawMode, onPolygonComplete, polygon,
+  outOfAreaIds,
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -175,13 +176,14 @@ export default function CollisionMap({
         const involvement = involvementLabel(p);
         const hasPed = involvement?.includes("Pedestrian");
         const hasCyc = involvement?.includes("Cyclist");
+        const isOutOfArea = outOfAreaIds?.has(p.OBJECTID);
 
         let marker;
         if (hasPed || hasCyc) {
           const emoji = hasPed && hasCyc ? "🚶🚲" : hasPed ? "🚶" : "🚲";
           marker = L.marker([pos.lat, pos.lng], {
             icon: L.divIcon({
-              html: `<div style="font-size:${isFatal ? 18 : 14}px;line-height:1;filter:drop-shadow(0 0 3px ${color});">${emoji}</div>`,
+              html: `<div style="font-size:${isFatal ? 18 : 14}px;line-height:1;filter:drop-shadow(0 0 3px ${color});opacity:${isOutOfArea ? 0.5 : 1};">${emoji}</div>`,
               iconSize: [isFatal ? 22 : 18, isFatal ? 22 : 18],
               iconAnchor: [isFatal ? 11 : 9, isFatal ? 11 : 9],
               className: "",
@@ -190,14 +192,21 @@ export default function CollisionMap({
         } else {
           marker = L.circleMarker([pos.lat, pos.lng], {
             radius: isFatal ? 7 : 4,
-            fillColor: color, color: isFatal ? "#fff" : color,
-            weight: isFatal ? 1.5 : 0.8, opacity: 0.9, fillOpacity: 0.75,
+            fillColor: color,
+            color: isOutOfArea ? "#f1c40f" : (isFatal ? "#fff" : color),
+            weight: isOutOfArea ? 1.5 : (isFatal ? 1.5 : 0.8),
+            opacity: isOutOfArea ? 0.7 : 0.9,
+            fillOpacity: isOutOfArea ? 0.3 : 0.75,
+            dashArray: isOutOfArea ? "3 3" : null,
           });
         }
+        const outOfAreaLine = isOutOfArea
+          ? `<div style="color:#f1c40f;font-size:10px;margin-bottom:2px">⚠ Outside selected area</div>` : "";
         const involveLine = involvement
           ? `<div style="color:#9b59b6;font-weight:700">👤 ${involvement}</div>` : "";
         marker.bindPopup(`
           <div style="font-family:'Space Mono',monospace;font-size:12px;min-width:200px;line-height:1.8">
+            ${outOfAreaLine}
             <div style="color:${color};font-weight:700;font-size:13px;margin-bottom:4px">${sev}</div>
             <div>📅 ${p.Accident_Date || "N/A"}</div>
             <div>🛣 ${p.Location || "N/A"}</div>

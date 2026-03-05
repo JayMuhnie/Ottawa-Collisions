@@ -6,6 +6,7 @@ import {
   fetchCollisionsNear, fetchCollisionsInBbox, geocodeAddress,
   getUniqueYears, getUniqueTypes, applyFilters,
   pointInPolygon, polygonBbox,
+  fetchCollisionsByGeoIds, mergeFeatures,
 } from "./utils";
 
 const accent = "#00b4d8";
@@ -42,6 +43,7 @@ export default function App() {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [highlightGeoId, setHighlightGeoId] = useState(null);
   const [filters, setFilters] = useState({ years: [], types: [], severity: [], involvement: [] });
+  const [outOfAreaIds, setOutOfAreaIds] = useState(new Set());
 
   const allYears = useMemo(() => getUniqueYears(collisions), [collisions]);
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
@@ -50,7 +52,25 @@ export default function App() {
   const resetState = () => {
     setFilters({ years: [], types: [], severity: [], involvement: [] });
     setHighlightGeoId(null);
+    setOutOfAreaIds(new Set());
   };
+
+  // After a spatial query, fetch any out-of-area collisions that share a Geo_ID
+  // with something already in the result set, then merge them in.
+  const expandWithSameLocations = useCallback(async (spatialFeatures) => {
+    const geoIds = [...new Set(
+      spatialFeatures.map(f => f.properties?.Geo_ID).filter(Boolean)
+    )];
+    if (geoIds.length === 0) return { features: spatialFeatures, outOfAreaIds: new Set() };
+    const extra = await fetchCollisionsByGeoIds(geoIds);
+    const merged = mergeFeatures(spatialFeatures, extra);
+    const spatialIds = new Set(spatialFeatures.map(f => f.properties?.OBJECTID));
+    const outOfAreaIds = new Set(
+      extra.filter(f => !spatialIds.has(f.properties?.OBJECTID))
+           .map(f => f.properties?.OBJECTID)
+    );
+    return { features: merged, outOfAreaIds };
+  }, []);
 
   // ── Load via radius ───────────────────────────────────────────────
   const loadCollisions = useCallback(async (lat, lng, km) => {
@@ -58,14 +78,18 @@ export default function App() {
     setError(null);
     resetState();
     try {
-      setCollisions(await fetchCollisionsNear(lat, lng, km));
+      const spatial = await fetchCollisionsNear(lat, lng, km);
+      const { features, outOfAreaIds } = await expandWithSameLocations(spatial);
+      setCollisions(features);
+      setOutOfAreaIds(outOfAreaIds);
     } catch (err) {
       setError(`Failed to load data: ${err.message}`);
       setCollisions([]);
+      setOutOfAreaIds(new Set());
     } finally {
       setLoading(false);
     }
-  }, []); // eslint-disable-line
+  }, [expandWithSameLocations]); // eslint-disable-line
 
   // ── Load via polygon ──────────────────────────────────────────────
   const loadCollisionsInPolygon = useCallback(async (poly) => {
@@ -75,20 +99,22 @@ export default function App() {
     try {
       const { minLat, maxLat, minLng, maxLng } = polygonBbox(poly);
       const bbox = await fetchCollisionsInBbox(minLng, minLat, maxLng, maxLat);
-      // Client-side filter to exact polygon boundary
-      const inside = bbox.filter(f => {
+      const spatial = bbox.filter(f => {
         const coords = f.geometry?.coordinates;
         if (!coords) return false;
         return pointInPolygon([coords[1], coords[0]], poly);
       });
-      setCollisions(inside);
+      const { features, outOfAreaIds } = await expandWithSameLocations(spatial);
+      setCollisions(features);
+      setOutOfAreaIds(outOfAreaIds);
     } catch (err) {
       setError(`Failed to load data: ${err.message}`);
       setCollisions([]);
+      setOutOfAreaIds(new Set());
     } finally {
       setLoading(false);
     }
-  }, []); // eslint-disable-line
+  }, [expandWithSameLocations]); // eslint-disable-line
 
   // ── Polygon drawn callback ────────────────────────────────────────
   const handlePolygonComplete = useCallback((verts) => {
@@ -324,6 +350,14 @@ export default function App() {
           <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
           {selectionMode === "radius" && <span>{radiusLabel} radius ·</span>}
           <span><b>{filteredCollisions.length.toLocaleString()}</b> collisions</span>
+          {outOfAreaIds.size > 0 && (
+            <>
+              <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
+              <span style={{ color: "#f1c40f" }} title="Collisions outside the selected area sharing a location ID with one inside it">
+                +{outOfAreaIds.size} out-of-area (same location)
+              </span>
+            </>
+          )}
         </div>
       )}
 
@@ -354,6 +388,7 @@ export default function App() {
             drawMode={drawMode}
             onPolygonComplete={handlePolygonComplete}
             polygon={selectionMode === "polygon" ? polygon : null}
+            outOfAreaIds={outOfAreaIds}
           />
 
           {/* Dot legend */}
@@ -377,6 +412,12 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <span style={{ fontSize: 13 }}>🚲</span><span style={{ color: "#9b59b6" }}>Cyclist involved</span>
                 </div>
+                {outOfAreaIds.size > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                    <div style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px dashed #f1c40f", flexShrink: 0, opacity: 0.7 }} />
+                    <span style={{ color: "#f1c40f" }}>Outside area (same location)</span>
+                  </div>
+                )}
                 <div style={{ color: "#7f8c8d", fontSize: 10 }}>
                   {selectionMode === "radius" ? "🟡 Search point · click map to query" : "⬡ Polygon mode active"}
                 </div>

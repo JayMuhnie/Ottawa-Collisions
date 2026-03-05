@@ -45,7 +45,45 @@ export async function fetchCollisionsInBbox(xmin, ymin, xmax, ymax) {
   return data.features || [];
 }
 
-// Ray-casting point-in-polygon test
+// Fetch all collisions citywide that share a Geo_ID with any feature in the given set.
+// Used to pull in out-of-area collisions at the same locations.
+export async function fetchCollisionsByGeoIds(geoIds) {
+  if (!geoIds || geoIds.length === 0) return [];
+
+  // ArcGIS WHERE clause: Geo_ID IN ('id1','id2',...)
+  // Batch in chunks of 100 to stay within URL length limits
+  const CHUNK = 100;
+  const chunks = [];
+  for (let i = 0; i < geoIds.length; i += CHUNK) {
+    chunks.push(geoIds.slice(i, i + CHUNK));
+  }
+
+  const results = await Promise.all(chunks.map(async (chunk) => {
+    const inList = chunk.map(id => `'${String(id).replace(/'/g, "''")}'`).join(",");
+    const params = new URLSearchParams({
+      where: `Geo_ID IN (${inList})`,
+      outFields: "*",
+      resultRecordCount: "2000",
+      returnGeometry: "true",
+      outSR: "4326",
+      f: "geojson",
+    });
+    const res = await fetch(`${PROXY}?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = JSON.parse(await res.text());
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    return data.features || [];
+  }));
+
+  return results.flat();
+}
+
+// Merge two feature arrays, deduplicating by OBJECTID
+export function mergeFeatures(primary, extra) {
+  const seen = new Set(primary.map(f => f.properties?.OBJECTID));
+  const unique = extra.filter(f => !seen.has(f.properties?.OBJECTID));
+  return [...primary, ...unique];
+}
 // polygon: [[lat, lng], ...], point: [lat, lng]
 export function pointInPolygon(point, polygon) {
   const [py, px] = point;
