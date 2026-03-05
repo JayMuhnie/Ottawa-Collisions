@@ -162,14 +162,14 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
           <button onClick={handleSelectAll} style={{
             background: "none", border: `1px solid ${border}`, borderRadius: 4,
             color: accent, padding: "2px 7px", fontSize: 10, cursor: "pointer",
-            fontFamily: "'IBM Plex Sans', sans-serif",
+            fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
           }}>All</button>
         )}
         {excludedCount < allLocations.length && (
           <button onClick={handleDeselectAll} style={{
             background: "none", border: `1px solid ${border}`, borderRadius: 4,
             color: "#7f8c8d", padding: "2px 7px", fontSize: 10, cursor: "pointer",
-            fontFamily: "'IBM Plex Sans', sans-serif",
+            fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
           }}>None</button>
         )}
 
@@ -180,7 +180,7 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
           color: repeatOnly ? "#000" : "#bdc3c7",
           padding: "3px 9px", fontSize: 10, cursor: "pointer",
           fontWeight: repeatOnly ? 700 : 400,
-          fontFamily: "'IBM Plex Sans', sans-serif",
+          fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
           whiteSpace: "nowrap", transition: "all 0.15s",
         }}>🔁 Repeats only</button>
       </div>

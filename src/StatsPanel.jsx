@@ -173,7 +173,7 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
             padding: "3px 9px",
             fontSize: 10,
             cursor: "pointer",
-            fontFamily: "'IBM Plex Sans', sans-serif",
+            fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
             marginBottom: 2,
           }}
         >

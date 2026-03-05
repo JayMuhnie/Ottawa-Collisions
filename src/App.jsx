@@ -220,6 +220,8 @@ export default function App() {
   if (showReport) {
     document.body.style.overflow = "auto";
     document.documentElement.style.overflow = "auto";
+    document.getElementById("root").style.overflow = "auto";
+    document.getElementById("root").style.height = "auto";
     return (
       <ReportPage
         collisions={filteredCollisions}
@@ -227,6 +229,8 @@ export default function App() {
         onBack={() => {
           document.body.style.overflow = "";
           document.documentElement.style.overflow = "";
+          document.getElementById("root").style.overflow = "";
+          document.getElementById("root").style.height = "";
           setShowReport(false);
         }}
       />
@@ -234,6 +238,8 @@ export default function App() {
   }
   document.body.style.overflow = "";
   document.documentElement.style.overflow = "";
+  document.getElementById("root").style.overflow = "";
+  document.getElementById("root").style.height = "";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0d0d1a" }}>
