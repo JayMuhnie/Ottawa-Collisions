@@ -6,7 +6,7 @@ import {
   fetchCollisionsNear, fetchCollisionsInBbox, geocodeAddress,
   getUniqueYears, getUniqueTypes, applyFilters,
   pointInPolygon, polygonBbox,
-  fetchCollisionsByGeoIds, mergeFeatures,
+  fetchCollisionsByGeoIds, mergeFeatures, buildOutOfAreaIds,
 } from "./utils";
 
 const accent = "#00b4d8";
@@ -43,7 +43,7 @@ export default function App() {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [highlightGeoId, setHighlightGeoId] = useState(null);
   const [filters, setFilters] = useState({ years: [], types: [], severity: [], involvement: [] });
-  const [outOfAreaIds, setOutOfAreaIds] = useState(new Set());
+  const [outOfAreaIds, setOutOfAreaIds] = useState([]);
 
   const allYears = useMemo(() => getUniqueYears(collisions), [collisions]);
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
@@ -52,23 +52,19 @@ export default function App() {
   const resetState = () => {
     setFilters({ years: [], types: [], severity: [], involvement: [] });
     setHighlightGeoId(null);
-    setOutOfAreaIds(new Set());
+    setOutOfAreaIds([]);
   };
 
   // After a spatial query, fetch any out-of-area collisions that share a Geo_ID
   // with something already in the result set, then merge them in.
   const expandWithSameLocations = useCallback(async (spatialFeatures) => {
     const geoIds = [...new Set(
-      spatialFeatures.map(f => f.properties?.Geo_ID).filter(Boolean)
+      spatialFeatures.map(f => f.properties?.Geo_ID).filter(id => id != null && id !== "")
     )];
     if (geoIds.length === 0) return { features: spatialFeatures, outOfAreaIds: new Set() };
     const extra = await fetchCollisionsByGeoIds(geoIds);
+    const outOfAreaIds = buildOutOfAreaIds(spatialFeatures, extra);
     const merged = mergeFeatures(spatialFeatures, extra);
-    const spatialIds = new Set(spatialFeatures.map(f => f.properties?.OBJECTID));
-    const outOfAreaIds = new Set(
-      extra.filter(f => !spatialIds.has(f.properties?.OBJECTID))
-           .map(f => f.properties?.OBJECTID)
-    );
     return { features: merged, outOfAreaIds };
   }, []);
 
@@ -85,7 +81,7 @@ export default function App() {
     } catch (err) {
       setError(`Failed to load data: ${err.message}`);
       setCollisions([]);
-      setOutOfAreaIds(new Set());
+      setOutOfAreaIds([]);
     } finally {
       setLoading(false);
     }
@@ -110,7 +106,7 @@ export default function App() {
     } catch (err) {
       setError(`Failed to load data: ${err.message}`);
       setCollisions([]);
-      setOutOfAreaIds(new Set());
+      setOutOfAreaIds([]);
     } finally {
       setLoading(false);
     }
@@ -350,11 +346,11 @@ export default function App() {
           <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
           {selectionMode === "radius" && <span>{radiusLabel} radius ·</span>}
           <span><b>{filteredCollisions.length.toLocaleString()}</b> collisions</span>
-          {outOfAreaIds.size > 0 && (
+          {outOfAreaIds.length > 0 && (
             <>
               <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
               <span style={{ color: "#f1c40f" }} title="Collisions outside the selected area sharing a location ID with one inside it">
-                +{outOfAreaIds.size} out-of-area (same location)
+                +{outOfAreaIds.length} out-of-area (same location)
               </span>
             </>
           )}
@@ -388,7 +384,7 @@ export default function App() {
             drawMode={drawMode}
             onPolygonComplete={handlePolygonComplete}
             polygon={selectionMode === "polygon" ? polygon : null}
-            outOfAreaIds={outOfAreaIds}
+            outOfAreaIds={new Set(outOfAreaIds)}
           />
 
           {/* Dot legend */}
@@ -412,7 +408,7 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <span style={{ fontSize: 13 }}>🚲</span><span style={{ color: "#9b59b6" }}>Cyclist involved</span>
                 </div>
-                {outOfAreaIds.size > 0 && (
+                {outOfAreaIds.length > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                     <div style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px dashed #f1c40f", flexShrink: 0, opacity: 0.7 }} />
                     <span style={{ color: "#f1c40f" }}>Outside area (same location)</span>

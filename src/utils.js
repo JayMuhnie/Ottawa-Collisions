@@ -46,22 +46,33 @@ export async function fetchCollisionsInBbox(xmin, ymin, xmax, ymax) {
 }
 
 // Fetch all collisions citywide that share a Geo_ID with any feature in the given set.
-// Used to pull in out-of-area collisions at the same locations.
 export async function fetchCollisionsByGeoIds(geoIds) {
   if (!geoIds || geoIds.length === 0) return [];
 
-  // ArcGIS WHERE clause: Geo_ID IN ('id1','id2',...)
-  // Batch in chunks of 100 to stay within URL length limits
-  const CHUNK = 100;
+  // Batch in chunks of 50 to stay within URL length limits
+  const CHUNK = 50;
   const chunks = [];
   for (let i = 0; i < geoIds.length; i += CHUNK) {
     chunks.push(geoIds.slice(i, i + CHUNK));
   }
 
   const results = await Promise.all(chunks.map(async (chunk) => {
-    const inList = chunk.map(id => `'${String(id).replace(/'/g, "''")}'`).join(",");
+    // Geo_ID can be numeric or string — try numeric first (no quotes), fall back to string
+    const numericIds = chunk.filter(id => !isNaN(Number(id)));
+    const stringIds = chunk.filter(id => isNaN(Number(id)));
+
+    let whereClause;
+    if (numericIds.length > 0 && stringIds.length === 0) {
+      whereClause = `Geo_ID IN (${numericIds.map(Number).join(",")})`;
+    } else if (stringIds.length > 0 && numericIds.length === 0) {
+      whereClause = `Geo_ID IN (${stringIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(",")})`;
+    } else {
+      // Mixed — use string form for all
+      whereClause = `Geo_ID IN (${chunk.map(id => `'${String(id).replace(/'/g, "''")}'`).join(",")})`;
+    }
+
     const params = new URLSearchParams({
-      where: `Geo_ID IN (${inList})`,
+      where: whereClause,
       outFields: "*",
       resultRecordCount: "2000",
       returnGeometry: "true",
@@ -78,11 +89,25 @@ export async function fetchCollisionsByGeoIds(geoIds) {
   return results.flat();
 }
 
+// Get the OBJECTID from a feature regardless of casing
+function getObjectId(f) {
+  const p = f.properties || {};
+  return p.OBJECTID ?? p.objectid ?? p.ObjectID ?? p.ObjectId;
+}
+
 // Merge two feature arrays, deduplicating by OBJECTID
 export function mergeFeatures(primary, extra) {
-  const seen = new Set(primary.map(f => f.properties?.OBJECTID));
-  const unique = extra.filter(f => !seen.has(f.properties?.OBJECTID));
+  const seen = new Set(primary.map(f => String(getObjectId(f))));
+  const unique = extra.filter(f => !seen.has(String(getObjectId(f))));
   return [...primary, ...unique];
+}
+
+// Build an array of out-of-area OBJECTIDs (as strings): those in extra that aren't in primary
+export function buildOutOfAreaIds(primary, extra) {
+  const spatialIds = new Set(primary.map(f => String(getObjectId(f))));
+  return extra
+    .filter(f => !spatialIds.has(String(getObjectId(f))))
+    .map(f => String(getObjectId(f)));
 }
 // polygon: [[lat, lng], ...], point: [lat, lng]
 export function pointInPolygon(point, polygon) {

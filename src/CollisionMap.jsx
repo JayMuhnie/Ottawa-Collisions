@@ -176,7 +176,8 @@ export default function CollisionMap({
         const involvement = involvementLabel(p);
         const hasPed = involvement?.includes("Pedestrian");
         const hasCyc = involvement?.includes("Cyclist");
-        const isOutOfArea = outOfAreaIds?.has(p.OBJECTID);
+        const isOutOfArea = outOfAreaIds?.size > 0 &&
+          outOfAreaIds.has(String(p.OBJECTID ?? p.objectid ?? p.ObjectID ?? p.ObjectId));
 
         let marker;
         if (hasPed || hasCyc) {
