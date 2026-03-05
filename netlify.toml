@@ -1,8 +1,12 @@
 [build]
-  # If you pushed the "ottawa-collisions" folder inside a repo (not as the root), uncomment:
-  # base = "ottawa-collisions"
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/collisions"
+  to = "/.netlify/functions/arcgis-proxy"
+  status = 200
 
 [[redirects]]
   from = "/*"

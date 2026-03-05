@@ -2,7 +2,7 @@ export const OTTAWA_CENTER = { lat: 45.4215, lng: -75.6972 };
 
 export const SEVERITY_COLORS = {
   "Fatal": "#e74c3c",
-  "Personal Injury": "#e67e22",
+  "Non-fatal Injury": "#e67e22",
   "Property Damage Only": "#3498db",
   "Unknown": "#95a5a6",
 };
@@ -12,12 +12,8 @@ export const CHART_PALETTE = [
   "#023e8a", "#90e0ef", "#ade8f4",
 ];
 
-// Build ArcGIS query URL — tries multiple known Ottawa service endpoints
-const ENDPOINTS = [
-  "https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Traffic_Collisions_2017_to_Current/FeatureServer/0",
-  "https://services1.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Traffic_Collisions/FeatureServer/0",
-  "https://utility.arcgis.com/usrsvcs/servers/146fb790d2ce4357b8f9651b797dd7d3/rest/services/Traffic_Collisions/FeatureServer/0",
-];
+// Uses a Netlify serverless proxy to avoid CORS issues with the ArcGIS API
+const PROXY = "/api/collisions";
 
 export async function fetchCollisionsNear(lat, lng, km) {
   const radiusDeg = km / 111;
@@ -37,23 +33,14 @@ export async function fetchCollisionsNear(lat, lng, km) {
     outFields: "*",
     resultRecordCount: "2000",
     returnGeometry: "true",
-    outSR: "4326",
-    f: "json",
+    f: "geojson",
   });
 
-  let lastError;
-  for (const base of ENDPOINTS) {
-    try {
-      const res = await fetch(`${base}/query?${params}`);
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data.error) continue;
-      if (Array.isArray(data.features)) return data.features;
-    } catch (e) {
-      lastError = e;
-    }
-  }
-  throw lastError || new Error("All API endpoints failed");
+  const res = await fetch(`${PROXY}?${params.toString()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.features || [];
 }
 
 export async function geocodeAddress(address) {
@@ -71,37 +58,48 @@ export async function geocodeAddress(address) {
   };
 }
 
+// Field: "Classification_Of_Accident" e.g. "01 - Fatal", "02 - Non-fatal injury", "03 - P.D. only"
 export function severityLabel(val) {
   if (!val) return "Unknown";
   const v = String(val).toUpperCase();
-  if (v.includes("FATAL") || v === "1") return "Fatal";
-  if (v.includes("INJURY") || v.includes("PERSONAL") || v === "2") return "Personal Injury";
-  if (v.includes("PROPERTY") || v.includes("PDO") || v === "3") return "Property Damage Only";
+  if (v.startsWith("01") || (v.includes("FATAL") && !v.includes("NON"))) return "Fatal";
+  if (v.startsWith("02") || v.includes("NON-FATAL") || v.includes("NON FATAL") || v.includes("INJURY")) return "Non-fatal Injury";
+  if (v.startsWith("03") || v.includes("P.D") || v.includes("PROPERTY") || v.includes("PDO")) return "Property Damage Only";
   return "Unknown";
 }
 
+// Field: "Initial_Impact_Type" e.g. "03 - Rear end", "02 - Angle"
 export function collisionTypeLabel(val) {
   if (!val) return "Unknown";
+  const stripped = String(val).replace(/^\d+\s*-\s*/, "").trim();
   const map = {
-    "REAREND": "Rear-End", "REAR END": "Rear-End", "REAR-END": "Rear-End",
-    "SIDESWIPE": "Sideswipe",
-    "ANGLE": "Angle",
-    "TURNING MOVEMENT": "Turning Movement", "TURNING": "Turning Movement",
-    "HEAD ON": "Head-On", "HEADON": "Head-On",
-    "PEDESTRIAN": "Pedestrian",
-    "CYCLIST": "Cyclist", "BICYCLE": "Cyclist",
-    "ROLLOVER": "Rollover",
-    "FIXED OBJECT": "Fixed Object",
+    "approaching": "Head-On / Approaching",
+    "angle": "Angle",
+    "rear end": "Rear-End",
+    "sideswipe": "Sideswipe",
+    "turning movement": "Turning Movement",
+    "smv other": "Single Vehicle",
+    "smv unattended": "Unattended Vehicle",
+    "other": "Other",
   };
-  const upper = String(val).toUpperCase();
+  const lower = stripped.toLowerCase();
   for (const [k, v] of Object.entries(map)) {
-    if (upper.includes(k)) return v;
+    if (lower.includes(k)) return v;
   }
-  return String(val);
+  return stripped || "Unknown";
 }
 
-export function extractYear(attributes) {
-  const raw = attributes.COLLISION_DATE || attributes.DATE || attributes.YEAR || "";
-  const match = String(raw).match(/\b(201[7-9]|202[0-4])\b/);
+// Field: "Accident_Year" (int) or "Accident_Date" (string "1/4/2017")
+export function extractYear(props) {
+  if (props.Accident_Year) return String(props.Accident_Year);
+  const raw = props.Accident_Date || "";
+  const match = String(raw).match(/\b(201[7-9]|202[0-9])\b/);
   return match ? match[1] : null;
+}
+
+// GeoJSON feature: geometry.coordinates = [lng, lat]
+export function getLatLng(feature) {
+  const coords = feature?.geometry?.coordinates;
+  if (!coords || coords.length < 2) return null;
+  return { lat: coords[1], lng: coords[0] };
 }
