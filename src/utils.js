@@ -12,7 +12,7 @@ export const CHART_PALETTE = [
   "#023e8a", "#90e0ef", "#ade8f4",
 ];
 
-const PROXY = "/api/collisions";
+const PROXY = "/.netlify/functions/arcgis-proxy";
 
 export async function fetchCollisionsNear(lat, lng, km) {
   const radiusDeg = km / 111;
