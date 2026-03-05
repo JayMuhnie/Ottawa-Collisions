@@ -223,21 +223,24 @@ export function getRepeatLocations(features) {
   return getAllLocations(features).filter(l => l.features.length > 1);
 }
 
-// Export filtered collisions to CSV and trigger download
+// Export all raw API fields as-is + lat/lng from geometry
 export function exportToCSV(features, filename = "ottawa-collisions.csv") {
-  const headers = [
-    "Date", "Year", "Location", "Geo_ID",
-    "Severity", "Collision_Type", "Road_Surface",
-    "Weather", "Light", "Traffic_Control",
-    "Num_Vehicles", "Num_Pedestrians", "Num_Bicycles",
-    "Involves_Pedestrian", "Involves_Cyclist",
-    "Num_Injuries", "Num_Fatal",
-    "Latitude", "Longitude",
-  ];
+  if (!features.length) return;
 
-  const escape = (v) => {
+  // Collect every property key across all features, preserving first-seen order
+  const rawKeys = [];
+  const seenKeys = new Set();
+  features.forEach(f => {
+    Object.keys(f.properties || {}).forEach(k => {
+      if (!seenKeys.has(k)) { seenKeys.add(k); rawKeys.push(k); }
+    });
+  });
+
+  const allHeaders = [...rawKeys, "Latitude", "Longitude"];
+
+  const escapeCell = (v) => {
     if (v === null || v === undefined) return "";
-    const s = String(v).replace(/^\d+\s*-\s*/, "").trim();
+    const s = String(v);
     return s.includes(",") || s.includes('"') || s.includes("\n")
       ? `"${s.replace(/"/g, '""')}"` : s;
   };
@@ -245,31 +248,10 @@ export function exportToCSV(features, filename = "ottawa-collisions.csv") {
   const rows = features.map(f => {
     const p = f.properties || {};
     const coords = f.geometry?.coordinates || [];
-    const { ped, cyc } = involvementFlags(p);
-    return [
-      escape(p.Accident_Date),
-      escape(p.Accident_Year),
-      escape(p.Location),
-      escape(p.Geo_ID),
-      escape(severityLabel(p.Classification_Of_Accident)),
-      escape(collisionTypeLabel(p.Initial_Impact_Type)),
-      escape(p.Road_1_Surface_Condition),
-      escape(p.Environment_Condition_1),
-      escape(p.Light),
-      escape(p.Traffic_Control),
-      escape(p.num_of_vehicles),
-      escape(p.num_of_pedestrians),
-      escape(p.num_of_bicycles),
-      ped ? "Yes" : "No",
-      cyc ? "Yes" : "No",
-      escape(p.num_of_injuries),
-      escape(p.num_of_fatal),
-      escape(coords[1]),
-      escape(coords[0]),
-    ].join(",");
+    return [...rawKeys.map(k => escapeCell(p[k])), escapeCell(coords[1]), escapeCell(coords[0])].join(",");
   });
 
-  const csv = [headers.join(","), ...rows].join("\n");
+  const csv = [allHeaders.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
