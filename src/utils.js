@@ -139,8 +139,8 @@ export function applyFilters(features, filters) {
   });
 }
 
-// Group features by location name/ID and find repeat locations
-export function getRepeatLocations(features) {
+// Group features by location — returns all locations sorted by count
+export function getAllLocations(features) {
   const locationMap = {};
   features.forEach(f => {
     const p = f.properties || {};
@@ -163,8 +163,63 @@ export function getRepeatLocations(features) {
     else if (sev === "Non-fatal Injury") locationMap[key].injury++;
     else locationMap[key].pdo++;
   });
-
   return Object.values(locationMap)
-    .filter(l => l.features.length > 1)
     .sort((a, b) => b.features.length - a.features.length);
+}
+
+// Convenience: only repeat locations (2+)
+export function getRepeatLocations(features) {
+  return getAllLocations(features).filter(l => l.features.length > 1);
+}
+
+// Export filtered collisions to CSV and trigger download
+export function exportToCSV(features, filename = "ottawa-collisions.csv") {
+  const headers = [
+    "Date", "Year", "Location", "Geo_ID",
+    "Severity", "Collision_Type", "Road_Surface",
+    "Weather", "Light", "Traffic_Control",
+    "Num_Vehicles", "Num_Pedestrians", "Num_Bicycles",
+    "Num_Injuries", "Num_Fatal",
+    "Latitude", "Longitude",
+  ];
+
+  const escape = (v) => {
+    if (v === null || v === undefined) return "";
+    const s = String(v).replace(/^\d+\s*-\s*/, "").trim();
+    return s.includes(",") || s.includes('"') || s.includes("\n")
+      ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const rows = features.map(f => {
+    const p = f.properties || {};
+    const coords = f.geometry?.coordinates || [];
+    return [
+      escape(p.Accident_Date),
+      escape(p.Accident_Year),
+      escape(p.Location),
+      escape(p.Geo_ID),
+      escape(severityLabel(p.Classification_Of_Accident)),
+      escape(collisionTypeLabel(p.Initial_Impact_Type)),
+      escape(p.Road_1_Surface_Condition),
+      escape(p.Environment_Condition_1),
+      escape(p.Light),
+      escape(p.Traffic_Control),
+      escape(p.num_of_vehicles),
+      escape(p.num_of_pedestrians),
+      escape(p.num_of_bicycles),
+      escape(p.num_of_injuries),
+      escape(p.num_of_fatal),
+      escape(coords[1]),
+      escape(coords[0]),
+    ].join(",");
+  });
+
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }

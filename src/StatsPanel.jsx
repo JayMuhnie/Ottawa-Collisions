@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { SEVERITY_COLORS, CHART_PALETTE, severityLabel, collisionTypeLabel, extractYear, getRepeatLocations } from "./utils";
+import { SEVERITY_COLORS, CHART_PALETTE, severityLabel, collisionTypeLabel, extractYear, getAllLocations, exportToCSV } from "./utils";
 import RepeatLocations from "./RepeatLocations";
 
 const S = {
@@ -34,7 +34,7 @@ const tooltipStyle = {
 const accent = "#00b4d8";
 const border = "rgba(255,255,255,0.08)";
 
-const TABS = ["Stats", "Repeat Locations"];
+const TABS = ["Stats", "Locations"];
 
 export default function StatsPanel({ collisions, loading, onHighlightLocation, highlightGeoId }) {
   const [tab, setTab] = useState("Stats");
@@ -61,7 +61,8 @@ export default function StatsPanel({ collisions, loading, onHighlightLocation, h
   }
 
   const props = collisions.map((f) => f.properties || {});
-  const repeatLocations = getRepeatLocations(collisions);
+  const allLocations = getAllLocations(collisions);
+  const repeatCount = allLocations.filter(l => l.features.length > 1).length;
 
   // Severity
   const severityCounts = {};
@@ -127,8 +128,8 @@ export default function StatsPanel({ collisions, loading, onHighlightLocation, h
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Tabs */}
-      <div style={{ display: "flex", borderBottom: `1px solid ${border}`, marginBottom: 12, flexShrink: 0 }}>
+      {/* Tabs + Export */}
+      <div style={{ display: "flex", borderBottom: `1px solid ${border}`, marginBottom: 12, flexShrink: 0, alignItems: "center" }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             background: "none",
@@ -143,13 +144,31 @@ export default function StatsPanel({ collisions, loading, onHighlightLocation, h
             marginBottom: -1,
           }}>
             {t}
-            {t === "Repeat Locations" && repeatLocations.length > 0 && (
+            {t === "Locations" && repeatCount > 0 && (
               <span style={{ marginLeft: 5, background: accent, color: "#000", borderRadius: 10, padding: "0 5px", fontSize: 10 }}>
-                {repeatLocations.length}
+                {repeatCount}
               </span>
             )}
           </button>
         ))}
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={() => exportToCSV(collisions)}
+          title="Export to CSV"
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: `1px solid ${border}`,
+            borderRadius: 4,
+            color: "#bdc3c7",
+            padding: "3px 9px",
+            fontSize: 10,
+            cursor: "pointer",
+            fontFamily: "'IBM Plex Sans', sans-serif",
+            marginBottom: 2,
+          }}
+        >
+          ⬇ Export CSV
+        </button>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", paddingRight: 2 }}>
@@ -260,7 +279,7 @@ export default function StatsPanel({ collisions, loading, onHighlightLocation, h
           </>
         ) : (
           <RepeatLocations
-            locations={repeatLocations}
+            allLocations={allLocations}
             onSelect={onHighlightLocation}
             selectedGeoId={highlightGeoId}
           />
