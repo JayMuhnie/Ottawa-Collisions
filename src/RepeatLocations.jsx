@@ -47,7 +47,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
         </button>
 
         {/* Rank */}
-        <div style={{ fontSize: 10, color: "#7f8c8d", width: 18, textAlign: "center", flexShrink: 0 }}>
+        <div style={{ fontSize: 10, color: "#9aa8b8", width: 18, textAlign: "center", flexShrink: 0 }}>
           #{i + 1}
         </div>
 
@@ -68,7 +68,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
         {/* Location name */}
         <div
           onClick={() => { onHighlight(isHighlighted ? null : (loc.geoId || loc.key)); if (isRepeat) setExpanded(e => !e); }}
-          style={{ fontSize: 11, color: "#ecf0f1", flex: 1, lineHeight: 1.4, cursor: "pointer" }}
+          style={{ fontSize: 11, color: "#dce4f0", flex: 1, lineHeight: 1.4, cursor: "pointer" }}
         >
           {loc.name.replace(/\s*\([^)]*\)\s*$/, "")}
         </div>
@@ -77,7 +77,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
         {isRepeat && (
           <div
             onClick={() => setExpanded(e => !e)}
-            style={{ color: "#7f8c8d", fontSize: 10, cursor: "pointer", padding: "0 2px" }}
+            style={{ color: "#9aa8b8", fontSize: 10, cursor: "pointer", padding: "0 2px" }}
           >
             {expanded ? "▲" : "▼"}
           </div>
@@ -89,7 +89,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
         {loc.fatal > 0 && <span style={{ fontSize: 10, background: "rgba(231,76,60,0.2)", color: "#e74c3c", padding: "1px 6px", borderRadius: 3 }}>{loc.fatal} fatal</span>}
         {loc.injury > 0 && <span style={{ fontSize: 10, background: "rgba(230,126,34,0.2)", color: "#e67e22", padding: "1px 6px", borderRadius: 3 }}>{loc.injury} injury</span>}
         {loc.pdo > 0 && <span style={{ fontSize: 10, background: "rgba(52,152,219,0.2)", color: "#3498db", padding: "1px 6px", borderRadius: 3 }}>{loc.pdo} PDO</span>}
-        <span style={{ fontSize: 10, color: "#7f8c8d" }}>{years.join(", ")}</span>
+        <span style={{ fontSize: 10, color: "#9aa8b8" }}>{years.join(", ")}</span>
       </div>
 
       {/* Expanded detail */}
@@ -107,8 +107,8 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
                 fontSize: 11,
               }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: sevColors[sev] || "#95a5a6", flexShrink: 0 }} />
-                <span style={{ color: "#7f8c8d", width: 70, flexShrink: 0 }}>{p.Accident_Date || "N/A"}</span>
-                <span style={{ color: "#bdc3c7" }}>{collisionTypeLabel(p.Initial_Impact_Type)}</span>
+                <span style={{ color: "#9aa8b8", width: 70, flexShrink: 0 }}>{p.Accident_Date || "N/A"}</span>
+                <span style={{ color: "#c8d4e0" }}>{collisionTypeLabel(p.Initial_Impact_Type)}</span>
                 <span style={{ color: sevColors[sev] || "#95a5a6", marginLeft: "auto", flexShrink: 0 }}>{sev}</span>
               </div>
             );
@@ -152,7 +152,7 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Controls row */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexShrink: 0, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7f8c8d", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif", flex: 1 }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9aa8b8", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif", flex: 1 }}>
           {displayed.length.toLocaleString()} location{displayed.length !== 1 ? "s" : ""}
           {excludedCount > 0 && <span style={{ color: "#e74c3c" }}> · {excludedCount} excluded</span>}
         </div>
@@ -168,7 +168,7 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
         {excludedCount < allLocations.length && (
           <button onClick={handleDeselectAll} style={{
             background: "none", border: `1px solid ${border}`, borderRadius: 4,
-            color: "#7f8c8d", padding: "2px 7px", fontSize: 10, cursor: "pointer",
+            color: "#9aa8b8", padding: "2px 7px", fontSize: 10, cursor: "pointer",
             fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
           }}>None</button>
         )}
@@ -177,7 +177,7 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
           background: repeatOnly ? accent : "rgba(255,255,255,0.06)",
           border: `1px solid ${repeatOnly ? accent : border}`,
           borderRadius: 4,
-          color: repeatOnly ? "#000" : "#bdc3c7",
+          color: repeatOnly ? "#000" : "#c8d4e0",
           padding: "3px 9px", fontSize: 10, cursor: "pointer",
           fontWeight: repeatOnly ? 700 : 400,
           fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
@@ -188,7 +188,7 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
       {/* List */}
       <div style={{ overflowY: "auto", flex: 1 }}>
         {displayed.length === 0 ? (
-          <div style={{ padding: "24px 0", color: "#7f8c8d", fontSize: 12, textAlign: "center" }}>
+          <div style={{ padding: "24px 0", color: "#9aa8b8", fontSize: 12, textAlign: "center" }}>
             {repeatOnly ? "No repeat collision locations found." : "No locations found."}
           </div>
         ) : (

@@ -11,7 +11,7 @@ function MultiSelect({ options, selected, onChange }) {
             background: active ? accent : "rgba(255,255,255,0.06)",
             border: `1px solid ${active ? accent : border}`,
             borderRadius: 4,
-            color: active ? "#000" : "#bdc3c7",
+            color: active ? "#000" : "#c8d4e0",
             padding: "3px 8px", fontSize: 11, cursor: "pointer",
             fontWeight: active ? 700 : 400, transition: "all 0.15s",
             fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
@@ -28,7 +28,7 @@ function ToggleButton({ active, onClick, children, color }) {
   return (
     <button onClick={onClick} style={{
       background: bg, border: `1px solid ${bc}`, borderRadius: 4,
-      color: active ? "#000" : "#bdc3c7",
+      color: active ? "#000" : "#c8d4e0",
       padding: "4px 10px", fontSize: 11, cursor: "pointer",
       fontWeight: active ? 700 : 400, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
       whiteSpace: "nowrap", transition: "all 0.15s",
@@ -44,7 +44,7 @@ export default function FilterBar({
 }) {
   const S = {
     group: { display: "flex", alignItems: "flex-start", gap: 8, flexWrap: "wrap" },
-    label: { fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", textTransform: "uppercase", whiteSpace: "nowrap", paddingTop: 4, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" },
+    label: { fontSize: 10, letterSpacing: "0.1em", color: "#9aa8b8", textTransform: "uppercase", whiteSpace: "nowrap", paddingTop: 4, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" },
     divider: { width: 1, background: border, alignSelf: "stretch", margin: "0 4px" },
   };
 
@@ -93,7 +93,7 @@ export default function FilterBar({
               }} style={{
                 background: active ? "#2ecc71" : "rgba(255,255,255,0.06)",
                 border: `1px solid ${active ? "#2ecc71" : border}`,
-                borderRadius: 4, color: active ? "#fff" : "#bdc3c7",
+                borderRadius: 4, color: active ? "#fff" : "#c8d4e0",
                 padding: "3px 8px", fontSize: 11, cursor: "pointer",
                 fontWeight: active ? 700 : 400, transition: "all 0.15s",
                 fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
@@ -112,7 +112,7 @@ export default function FilterBar({
       {hasFilters && (
         <button onClick={() => onFiltersChange({ years: [], types: [], severity: [], involvement: [] })} style={{
           background: "none", border: `1px solid ${border}`, borderRadius: 4,
-          color: "#7f8c8d", padding: "4px 10px", fontSize: 11, cursor: "pointer",
+          color: "#9aa8b8", padding: "4px 10px", fontSize: 11, cursor: "pointer",
           fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif", whiteSpace: "nowrap",
         }}>✕ Clear</button>
       )}

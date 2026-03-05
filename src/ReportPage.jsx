@@ -45,7 +45,7 @@ function buildStats(features) {
 const css = {
   th: {
     background: "#141920",
-    color: "#8b9cc8",
+    color: "#a8b8cc",
     fontSize: 10,
     fontWeight: 700,
     letterSpacing: "0.09em",
@@ -58,7 +58,7 @@ const css = {
   thLeft: { textAlign: "left" },
   td: {
     padding: "6px 6px",
-    color: "#c8d0e8",
+    color: "#dce4f0",
     border: "1px solid #1a2030",
     fontSize: 12,
     textAlign: "center",
@@ -76,7 +76,7 @@ const css = {
     fontWeight: 700,
     background: "#141920",
   },
-  zero: { color: "#2a3350" },
+  zero: { color: "#4a5a6a" },
 };
 
 // ── Cross-tab matrix table ───────────────────────────────────────────
@@ -123,8 +123,8 @@ function CrossTab({ features }) {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: "#4a5578", marginBottom: 8 }}>
-        Data period: <span style={{ color: "#8b9cc8", fontWeight: 600 }}>{yearLabel}</span>
+      <div style={{ fontSize: 11, color: "#7a8fa8", marginBottom: 8 }}>
+        Data period: <span style={{ color: "#a8b8cc", fontWeight: 600 }}>{yearLabel}</span>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
@@ -155,7 +155,7 @@ function CrossTab({ features }) {
             const rowTotal = features.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === sev).length;
             return (
               <tr key={sev} style={{ background: si % 2 === 0 ? "transparent" : "rgba(255,255,255,0.012)" }}>
-                <td style={{ ...css.td, ...css.tdLabel, color: SEV_COLORS[sev] || "#c8d0e8" }}>{sev}</td>
+                <td style={{ ...css.td, ...css.tdLabel, color: SEV_COLORS[sev] || "#dce4f0" }}>{sev}</td>
                 {types.map(t => {
                   const val = matrix[sev]?.[t] || 0;
                   return (
@@ -175,7 +175,7 @@ function CrossTab({ features }) {
             );
           })}
           <tr style={{ borderTop: "2px solid #2a3350" }}>
-            <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#8b9cc8" }}>Total</td>
+            <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#a8b8cc" }}>Total</td>
             {types.map(t => (
               <td key={t} style={{ ...css.td, ...css.tdTotal, color: "#e8ecf8" }}>{colTotals[t] || "—"}</td>
             ))}
@@ -204,8 +204,8 @@ function SummaryTable({ locations }) {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: "#4a5578", marginBottom: 8 }}>
-        Data period: <span style={{ color: "#8b9cc8", fontWeight: 600 }}>{yearLabel}</span>
+      <div style={{ fontSize: 11, color: "#7a8fa8", marginBottom: 8 }}>
+        Data period: <span style={{ color: "#a8b8cc", fontWeight: 600 }}>{yearLabel}</span>
       </div>
       <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -233,7 +233,7 @@ function SummaryTable({ locations }) {
             });
             return (
               <tr key={loc.key} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.012)" }}>
-                <td style={{ ...css.td, color: "#4a5578", fontSize: 10, padding: "6px" }}>{i + 1}</td>
+                <td style={{ ...css.td, color: "#7a8fa8", fontSize: 10, padding: "6px" }}>{i + 1}</td>
                 <td style={{ ...css.td, ...css.tdLabel, color: "#e8ecf8" }}>
                   {loc.name.replace(/\s*\([^)]*\)\s*$/, "")}
                 </td>
@@ -251,7 +251,7 @@ function SummaryTable({ locations }) {
           {/* Totals */}
           <tr style={{ borderTop: "2px solid #2a3350" }}>
             <td style={{ ...css.td, ...css.tdTotal }} />
-            <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#8b9cc8" }}>Total</td>
+            <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#a8b8cc" }}>Total</td>
             {activeSevs.map(s => {
               const n = allFeatures.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === s).length;
               return <td key={s} style={{ ...css.td, ...css.tdTotal, color: n ? SEV_COLORS[s] : css.zero.color }}>{n || "—"}</td>;
@@ -353,7 +353,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
       minHeight: "100vh",
       background: "#0d1117",
       fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
-      color: "#c8d0e8",
+      color: "#dce4f0",
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
@@ -361,7 +361,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
         body { font-family: 'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif !important; }
         @media print {
           .no-print { display: none !important; }
-          body { background: #0d1117 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #c8d0e8 !important; }
+          body { background: #0d1117 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #dce4f0 !important; }
           @page { margin: 12mm 14mm; size: letter landscape; }
           h1 { font-size: 18pt !important; }
           h2 { font-size: 12pt !important; }
@@ -378,11 +378,11 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
       }}>
         <button onClick={onBack} style={{
           background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 6, color: "#8b9cc8", padding: "6px 14px",
+          borderRadius: 6, color: "#a8b8cc", padding: "6px 14px",
           fontSize: 12, cursor: "pointer",
         }}>← Back to Map</button>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, color: "#4a5578" }}>
+        <span style={{ fontSize: 11, color: "#7a8fa8" }}>
           {collisions.length} collisions · {locations.length} locations
         </span>
         <button onClick={() => window.print()} style={{
@@ -409,10 +409,10 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
             <div style={{
               marginTop: 10, padding: "8px 12px",
               background: "rgba(255,255,255,0.03)", border: "1px solid #1e2535",
-              borderRadius: 6, fontSize: 11, color: "#4a5578",
+              borderRadius: 6, fontSize: 11, color: "#7a8fa8",
               fontFamily: "monospace",
             }}>
-              <span style={{ color: "#8b9cc8", fontWeight: 600, fontFamily: "inherit" }}>Boundary: </span>
+              <span style={{ color: "#a8b8cc", fontWeight: 600, fontFamily: "inherit" }}>Boundary: </span>
               {boundaryText}
             </div>
           )}
@@ -432,7 +432,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
                 borderRadius: 8, padding: "10px 16px", minWidth: 90,
               }}>
                 <div style={{ fontSize: 20, fontWeight: 700, color }}>{value}</div>
-                <div style={{ fontSize: 9, color: "#4a5578", letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>{label}</div>
+                <div style={{ fontSize: 9, color: "#7a8fa8", letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>{label}</div>
               </div>
             ))}
           </div>
@@ -440,7 +440,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
 
         {/* ── Section 1: All locations combined cross-tab ── */}
         <div style={{ marginBottom: 36 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: "#8b9cc8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, color: "#a8b8cc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
             All Locations — Summary
           </h2>
           <div style={{ border: "1px solid #1e2535", borderRadius: 8, overflow: "hidden", padding: "12px 14px" }}>
@@ -451,7 +451,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
         <div style={{ borderTop: "1px solid #1e2535", marginBottom: 32 }} />
 
         {/* ── Section 2: Per-location cross-tabs ── */}
-        <h2 style={{ fontSize: 13, fontWeight: 700, color: "#8b9cc8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 24, marginTop: 0 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 700, color: "#a8b8cc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 24, marginTop: 0 }}>
           Location Breakdown
         </h2>
         {locations.map((loc, i) => (

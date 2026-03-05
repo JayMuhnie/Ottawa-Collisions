@@ -47,8 +47,7 @@ export default function App() {
   const [outOfAreaIds, setOutOfAreaIds] = useState([]);
   const [excludedGeoIds, setExcludedGeoIds] = useState(new Set());
   const [showReport, setShowReport] = useState(false);
-  const [showBoundaryImport, setShowBoundaryImport] = useState(false);
-  const [boundaryImportText, setBoundaryImportText] = useState("");
+  const [savedMsg, setSavedMsg] = useState(""); // "" | "saved" | "loaded" | "error"
 
   const allYears = useMemo(() => getUniqueYears(collisions), [collisions]);
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
@@ -126,77 +125,76 @@ export default function App() {
     }
   }, [expandWithSameLocations]); // eslint-disable-line
 
-  const handleBoundaryImport = useCallback(() => {
-    const text = boundaryImportText.trim();
-    if (!text) return;
+  // ── Save / load settings ─────────────────────────────────────────
+  const saveSettings = useCallback(() => {
+    try {
+      const settings = {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        selectionMode,
+        filters,
+        excludedGeoIds: [...excludedGeoIds],
+        ...(selectionMode === "radius" && searchMarker
+          ? { boundary: { type: "radius", lat: searchMarker.lat, lng: searchMarker.lng, radiusKm } }
+          : selectionMode === "polygon" && polygon
+          ? { boundary: { type: "polygon", vertices: polygon } }
+          : {}),
+      };
+      const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const date = new Date().toISOString().slice(0, 10);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ottawa-collisions-settings-${date}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSavedMsg("saved");
+      setTimeout(() => setSavedMsg(""), 2000);
+    } catch { setSavedMsg("error"); setTimeout(() => setSavedMsg(""), 2000); }
+  }, [selectionMode, filters, excludedGeoIds, searchMarker, radiusKm, polygon]);
 
-    // Try radius format: "lat=X lng=Y radius=Zkm" or raw coords from CSV comment
-    const radMatch = text.match(/lat[=:\s]+([+-]?\d+\.?\d*)[,\s]+lng[=:\s]+([+-]?\d+\.?\d*)[,\s]+radius[=:\s]+([0-9.]+)\s*km/i)
-      || text.match(/([+-]?\d{1,3}\.\d+)[,\s]+([+-]?\d{1,3}\.\d+)[,\s]+([0-9.]+)\s*km/i);
-    if (radMatch) {
-      const lat = parseFloat(radMatch[1]);
-      const lng = parseFloat(radMatch[2]);
-      const km  = parseFloat(radMatch[3]);
-      if (!isNaN(lat) && !isNaN(lng) && !isNaN(km)) {
-        switchToRadius();
-        setSearchMarker({ lat, lng });
-        setRadiusKm(km);
-        setRadiusInput(String(Math.round(km * 1000)));
-        setLocationLabel(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-        loadCollisions(lat, lng, km);
-        setShowBoundaryImport(false);
-        setBoundaryImportText("");
-        return;
-      }
-    }
+  const loadSettings = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const s = JSON.parse(ev.target.result);
+          if (s.filters) setFilters(s.filters);
+          if (s.excludedGeoIds) setExcludedGeoIds(new Set(s.excludedGeoIds));
+          if (s.boundary?.type === "radius") {
+            const { lat, lng, radiusKm: km } = s.boundary;
+            setSelectionMode("radius");
+            setDrawMode(false);
+            setPolygon(null);
+            setSearchMarker({ lat, lng });
+            setRadiusKm(km);
+            setRadiusInput(String(Math.round(km * 1000)));
+            setLocationLabel(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+            loadCollisions(lat, lng, km);
+          } else if (s.boundary?.type === "polygon") {
+            const verts = s.boundary.vertices;
+            setSelectionMode("polygon");
+            setDrawMode(false);
+            setPolygon(verts);
+            setSearchMarker(null);
+            setLocationLabel(`Polygon · ${verts.length} vertices`);
+            loadCollisionsInPolygon(verts);
+          }
+          setSavedMsg("loaded");
+          setTimeout(() => setSavedMsg(""), 2000);
+        } catch { setSavedMsg("error"); setTimeout(() => setSavedMsg(""), 2000); }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, [loadCollisions, loadCollisionsInPolygon]); // eslint-disable-line
 
-    // Try polygon format: "lat,lng | lat,lng | ..." (from CSV or report)
-    const pipeSegments = text.split(/\s*\|\s*/);
-    if (pipeSegments.length >= 3) {
-      const verts = pipeSegments.map(seg => {
-        const parts = seg.trim().split(/[,\s]+/);
-        const lat = parseFloat(parts[0]);
-        const lng = parseFloat(parts[1]);
-        return isNaN(lat) || isNaN(lng) ? null : [lat, lng];
-      }).filter(Boolean);
-      if (verts.length >= 3) {
-        switchToPolygon();
-        setDrawMode(false);
-        setPolygon(verts);
-        setLocationLabel(`Polygon · ${verts.length} vertices`);
-        loadCollisionsInPolygon(verts);
-        setShowBoundaryImport(false);
-        setBoundaryImportText("");
-        return;
-      }
-    }
-
-    // Try comma-separated pairs without pipes: "lat lng, lat lng, ..."
-    const commaPairs = text.split(/\s*,\s*/);
-    if (commaPairs.length >= 6) { // 3+ pairs
-      const verts = [];
-      for (let i = 0; i < commaPairs.length - 1; i += 2) {
-        const lat = parseFloat(commaPairs[i]);
-        const lng = parseFloat(commaPairs[i + 1]);
-        if (!isNaN(lat) && !isNaN(lng)) verts.push([lat, lng]);
-      }
-      if (verts.length >= 3) {
-        switchToPolygon();
-        setDrawMode(false);
-        setPolygon(verts);
-        setLocationLabel(`Polygon · ${verts.length} vertices`);
-        loadCollisionsInPolygon(verts);
-        setShowBoundaryImport(false);
-        setBoundaryImportText("");
-        return;
-      }
-    }
-
-    setError("Could not parse boundary. Paste the 'To reproduce' line from a CSV or report.");
-    setShowBoundaryImport(false);
-    setBoundaryImportText("");
-  }, [boundaryImportText, loadCollisions, loadCollisionsInPolygon]); // eslint-disable-line
-  const handlePolygonComplete = useCallback((verts) => {
+  // ── Polygon drawn callback ──────────────────────────────────────── = useCallback((verts) => {
     setPolygon(verts);
     setDrawMode(false);
     setSearchMarker(null);
@@ -332,9 +330,9 @@ export default function App() {
         {/* Brand */}
         <div style={{ marginRight: 8 }}>
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.07em", color: accent }}>
-            OTTAWA COLLISION ANALYSIS
+            CITY OF OTTAWA COLLISIONS (OPEN DATA)
           </div>
-          <div style={{ fontSize: 10, color: "#7f8c8d", letterSpacing: "0.08em" }}>
+          <div style={{ fontSize: 10, color: "#9aa8b8", letterSpacing: "0.08em" }}>
             Traffic Safety Intelligence · 2017–present
           </div>
         </div>
@@ -349,7 +347,7 @@ export default function App() {
             placeholder="Search address or intersection…"
             style={{
               background: "rgba(255,255,255,0.06)", border: `1px solid ${border}`,
-              borderRadius: 6, color: "#ecf0f1", padding: "7px 12px",
+              borderRadius: 6, color: "#dce4f0", padding: "7px 12px",
               fontSize: 13, width: 240, outline: "none",
             }}
             onFocus={e => e.target.style.borderColor = accent}
@@ -360,26 +358,32 @@ export default function App() {
             padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
             letterSpacing: "0.06em", opacity: geocoding ? 0.7 : 1,
           }}>{geocoding ? "…" : "SEARCH"}</button>
-          <button onClick={() => { setShowBoundaryImport(b => !b); setBoundaryImportText(""); }} style={{
-            background: showBoundaryImport ? "rgba(0,180,216,0.15)" : "rgba(255,255,255,0.05)",
-            border: `1px solid ${showBoundaryImport ? accent : border}`,
-            borderRadius: 6, color: showBoundaryImport ? accent : "#bdc3c7",
+
+          {/* Save / Load settings */}
+          <button onClick={saveSettings} title="Save current boundary, filters and exclusions to browser storage" style={{
+            background: "rgba(255,255,255,0.05)", border: `1px solid ${border}`,
+            borderRadius: 6, color: savedMsg === "saved" ? "#2ecc71" : "#c8d4e0",
             padding: "6px 12px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
-          }}>📐 Load Boundary</button>
+          }}>{savedMsg === "saved" ? "✓ Saved" : "💾 Save Settings"}</button>
+          <button onClick={loadSettings} title="Open a saved settings file to restore boundary, filters and exclusions" style={{
+            background: "rgba(255,255,255,0.05)", border: `1px solid ${border}`,
+            borderRadius: 6, color: savedMsg === "loaded" ? "#2ecc71" : savedMsg === "error" ? "#e74c3c" : "#c8d4e0",
+            padding: "6px 12px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
+          }}>{savedMsg === "loaded" ? "✓ Loaded" : savedMsg === "error" ? "✕ Invalid file" : "↩ Load Settings"}</button>
         </div>
 
         {/* Mode toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "3px 4px", border: `1px solid ${border}` }}>
           <button onClick={switchToRadius} style={{
             background: selectionMode === "radius" ? accent : "none",
-            border: "none", borderRadius: 4, color: selectionMode === "radius" ? "#000" : "#bdc3c7",
+            border: "none", borderRadius: 4, color: selectionMode === "radius" ? "#000" : "#c8d4e0",
             padding: "4px 10px", fontSize: 11, cursor: "pointer",
             fontWeight: selectionMode === "radius" ? 700 : 400,
           }}>⊙ Radius</button>
           <button onClick={selectionMode === "polygon" ? (drawMode ? undefined : clearPolygon) : switchToPolygon} style={{
             background: selectionMode === "polygon" ? (drawMode ? "#2ecc71" : "#f1c40f") : "none",
             border: "none", borderRadius: 4,
-            color: selectionMode === "polygon" ? "#000" : "#bdc3c7",
+            color: selectionMode === "polygon" ? "#000" : "#c8d4e0",
             padding: "4px 10px", fontSize: 11, cursor: "pointer",
             fontWeight: selectionMode === "polygon" ? 700 : 400,
           }}>
@@ -390,12 +394,12 @@ export default function App() {
         {/* Radius controls — only in radius mode */}
         {selectionMode === "radius" && (
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#7f8c8d", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>RADIUS</span>
+            <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#9aa8b8", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>RADIUS</span>
             {RADIUS_PRESETS.map(({ label, km }) => (
               <button key={km} onClick={() => applyRadius(km)} style={{
                 background: !isCustomRadius && radiusKm === km ? accent : "rgba(255,255,255,0.06)",
                 border: "none", borderRadius: 4,
-                color: !isCustomRadius && radiusKm === km ? "#000" : "#bdc3c7",
+                color: !isCustomRadius && radiusKm === km ? "#000" : "#c8d4e0",
                 padding: "5px 8px", fontSize: 11, cursor: "pointer",
                 fontWeight: !isCustomRadius && radiusKm === km ? 700 : 400,
               }}>{label}</button>
@@ -411,14 +415,14 @@ export default function App() {
                 style={{
                   background: "rgba(255,255,255,0.06)",
                   border: `1px solid ${isCustomRadius ? accent : border}`,
-                  borderRadius: 4, color: "#ecf0f1",
+                  borderRadius: 4, color: "#dce4f0",
                   padding: "4px 6px", fontSize: 11, width: 58,
                   outline: "none", textAlign: "right",
                   fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
                 }}
                 onFocus={e => e.target.style.borderColor = accent}
               />
-              <span style={{ fontSize: 10, color: "#7f8c8d" }}>m</span>
+              <span style={{ fontSize: 10, color: "#9aa8b8" }}>m</span>
             </div>
           </div>
         )}
@@ -440,7 +444,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button onClick={clearDraw} style={{
               background: "none", border: `1px solid ${border}`, borderRadius: 4,
-              color: "#bdc3c7", padding: "4px 10px", fontSize: 11, cursor: "pointer",
+              color: "#c8d4e0", padding: "4px 10px", fontSize: 11, cursor: "pointer",
             }}>✏ Redraw</button>
             <button onClick={clearDraw} style={{
               background: "rgba(231,76,60,0.12)", border: "1px solid rgba(231,76,60,0.35)",
@@ -450,49 +454,6 @@ export default function App() {
           </div>
         )}
       </header>
-
-      {/* ── Boundary import panel ────────────────────────────────── */}
-      {showBoundaryImport && (
-        <div style={{
-          background: "#111124", borderBottom: `1px solid ${border}`,
-          padding: "10px 18px", display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0,
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: "#7f8c8d", marginBottom: 6 }}>
-              Paste the <b style={{ color: accent }}>"To reproduce"</b> line from a CSV export or report boundary box:
-            </div>
-            <div style={{ fontSize: 10, color: "#4a5578", marginBottom: 6 }}>
-              <b style={{ color: "#8b9cc8" }}>Radius:</b> lat=45.XXXXXX lng=-75.XXXXXX radius=0.5km &nbsp;|&nbsp;
-              <b style={{ color: "#8b9cc8" }}>Polygon:</b> 45.XXXXXX,-75.XXXXXX | 45.XXXXXX,-75.XXXXXX | …
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                value={boundaryImportText}
-                onChange={e => setBoundaryImportText(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleBoundaryImport()}
-                placeholder="Paste boundary string here…"
-                style={{
-                  flex: 1, background: "rgba(255,255,255,0.06)", border: `1px solid ${border}`,
-                  borderRadius: 6, color: "#ecf0f1", padding: "7px 12px",
-                  fontSize: 12, outline: "none",
-                }}
-                onFocus={e => e.target.style.borderColor = accent}
-                onBlur={e => e.target.style.borderColor = border}
-                autoFocus
-              />
-              <button onClick={handleBoundaryImport} style={{
-                background: accent, border: "none", borderRadius: 6,
-                color: "#000", padding: "7px 16px", fontSize: 12,
-                fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-              }}>Load</button>
-              <button onClick={() => { setShowBoundaryImport(false); setBoundaryImportText(""); }} style={{
-                background: "none", border: `1px solid ${border}`, borderRadius: 6,
-                color: "#7f8c8d", padding: "7px 10px", fontSize: 12, cursor: "pointer",
-              }}>✕</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Error ────────────────────────────────────────────────── */}
       {error && (
@@ -575,7 +536,7 @@ export default function App() {
               {[["Fatal","#e74c3c"],["Non-fatal Injury","#e67e22"],["Property Damage Only","#3498db"],["Unknown","#95a5a6"]].map(([label, color]) => (
                 <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <div style={{ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                  <span style={{ color: "#bdc3c7" }}>{label}</span>
+                  <span style={{ color: "#c8d4e0" }}>{label}</span>
                 </div>
               ))}
               <div style={{ borderTop: `1px solid ${border}`, marginTop: 6, paddingTop: 6 }}>
@@ -591,7 +552,7 @@ export default function App() {
                     <span style={{ color: "#f1c40f" }}>Outside area (same location)</span>
                   </div>
                 )}
-                <div style={{ color: "#7f8c8d", fontSize: 10 }}>
+                <div style={{ color: "#9aa8b8", fontSize: 10 }}>
                   {selectionMode === "radius" ? "🟡 Search point · click map to query" : "⬡ Polygon mode active"}
                 </div>
               </div>
@@ -606,12 +567,12 @@ export default function App() {
               borderRadius: 8, padding: "10px 14px", fontSize: 11,
               backdropFilter: "blur(4px)", zIndex: 1000,
             }}>
-              <div style={{ fontSize: 10, color: "#7f8c8d", letterSpacing: "0.1em", marginBottom: 8 }}>COLLISION DENSITY</div>
+              <div style={{ fontSize: 10, color: "#9aa8b8", letterSpacing: "0.1em", marginBottom: 8 }}>COLLISION DENSITY</div>
               <div style={{ width: 80, height: 8, borderRadius: 4, background: "linear-gradient(to right, #023e8a, #0077b6, #f1c40f, #e67e22, #e74c3c)", marginBottom: 3 }} />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#7f8c8d" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#9aa8b8" }}>
                 <span>Low</span><span>High</span>
               </div>
-              <div style={{ marginTop: 6, fontSize: 9, color: "#7f8c8d" }}>Fatal weighted higher</div>
+              <div style={{ marginTop: 6, fontSize: 9, color: "#9aa8b8" }}>Fatal weighted higher</div>
             </div>
           )}
 
@@ -622,7 +583,7 @@ export default function App() {
               transform: "translate(-50%, -50%)",
               background: "rgba(13,13,26,0.88)", border: `1px solid ${border}`,
               borderRadius: 12, padding: "18px 28px", fontSize: 13,
-              color: "#7f8c8d", textAlign: "center", pointerEvents: "none", lineHeight: 2, zIndex: 1000,
+              color: "#9aa8b8", textAlign: "center", pointerEvents: "none", lineHeight: 2, zIndex: 1000,
             }}>
               {selectionMode === "radius"
                 ? <>Click anywhere on the map<br />or search an address above</>

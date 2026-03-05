@@ -14,7 +14,7 @@ html, body, #root {
 
 body {
   background: #0d0d1a;
-  color: #ecf0f1;
+  color: #dce4f0;
   font-family: 'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif;
 }
 
@@ -45,7 +45,7 @@ input, button {
 }
 
 .leaflet-popup-content {
-  color: #ecf0f1;
+  color: #dce4f0;
   margin: 12px 14px;
 }
 
