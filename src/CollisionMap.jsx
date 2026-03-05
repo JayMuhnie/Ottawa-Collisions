@@ -13,17 +13,18 @@ export default function CollisionMap({
   const heatLayerRef = useRef(null);
   const searchLayerRef = useRef(null);
   const highlightLayerRef = useRef(null);
-  const drawLayerRef = useRef(null);      // committed polygon display
-  const sketchLayerRef = useRef(null);    // in-progress vertices/lines
+  const drawLayerRef = useRef(null);
+  const sketchLayerRef = useRef(null);
 
-  // Keep mutable draw state in refs (not state, to avoid re-renders mid-draw)
+  // Draw state — all in refs to avoid stale closures in map event handlers
   const drawModeRef = useRef(drawMode);
   const verticesRef = useRef([]);
   const guideLineRef = useRef(null);
+  const clickTimerRef = useRef(null);   // debounce single vs double click
 
-  // Keep latest callbacks in refs so map event handlers stay current
   const onPolygonCompleteRef = useRef(onPolygonComplete);
   const onMapClickRef = useRef(onMapClick);
+
   useEffect(() => { drawModeRef.current = drawMode; }, [drawMode]);
   useEffect(() => { onPolygonCompleteRef.current = onPolygonComplete; }, [onPolygonComplete]);
   useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
@@ -31,11 +32,13 @@ export default function CollisionMap({
   // ── Init map once ─────────────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current) return;
+
     const map = L.map(containerRef.current, {
       center: [OTTAWA_CENTER.lat, OTTAWA_CENTER.lng],
       zoom: 13,
-      doubleClickZoom: false,   // we use dblclick to close polygon
+      doubleClickZoom: false,
     });
+
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       attribution: "© OpenStreetMap © CARTO",
       maxZoom: 19,
@@ -47,89 +50,66 @@ export default function CollisionMap({
     drawLayerRef.current = L.layerGroup().addTo(map);
     sketchLayerRef.current = L.layerGroup().addTo(map);
 
-    // Single click
+    // ── Click: debounced so dblclick can cancel it ─────────────────
     map.on("click", (e) => {
-      if (drawModeRef.current) {
-        addVertex(map, e.latlng.lat, e.latlng.lng);
-      } else {
+      if (!drawModeRef.current) {
         onMapClickRef.current(e.latlng.lat, e.latlng.lng);
+        return;
       }
+      // Debounce: wait 220ms — if dblclick fires, this timer gets cleared
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        verticesRef.current = [...verticesRef.current, [lat, lng]];
+        refreshSketch(map, sketchLayerRef.current, verticesRef.current, guideLineRef);
+      }, 220);
     });
 
-    // Double-click closes the polygon
+    // ── Double-click: cancel pending single click, close polygon ───
     map.on("dblclick", (e) => {
       L.DomEvent.stopPropagation(e);
       if (!drawModeRef.current) return;
+      // Cancel the pending single-click vertex add
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current);
+        clickTimerRef.current = null;
+      }
       const verts = verticesRef.current;
       if (verts.length < 3) return;
-      finishPolygon(map);
+      // Clear sketch
+      sketchLayerRef.current.clearLayers();
+      guideLineRef.current = null;
+      const completed = [...verts];
+      verticesRef.current = [];
+      onPolygonCompleteRef.current(completed);
     });
 
-    // Mouse move: rubber-band guide line from last vertex to cursor
+    // ── Mouse move: guide line from last vertex to cursor ──────────
     map.on("mousemove", (e) => {
       if (!drawModeRef.current || verticesRef.current.length === 0) return;
-      if (guideLineRef.current) sketchLayerRef.current.removeLayer(guideLineRef.current);
+      const sketch = sketchLayerRef.current;
+      if (guideLineRef.current) sketch.removeLayer(guideLineRef.current);
       const last = verticesRef.current[verticesRef.current.length - 1];
       guideLineRef.current = L.polyline(
         [last, [e.latlng.lat, e.latlng.lng]],
-        { color: "#f1c40f", weight: 1.5, opacity: 0.5, dashArray: "4 4" }
+        { color: "#f1c40f", weight: 1.5, opacity: 0.45, dashArray: "4 5" }
       );
-      sketchLayerRef.current.addLayer(guideLineRef.current);
+      sketch.addLayer(guideLineRef.current);
     });
 
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
   }, []); // eslint-disable-line
 
-  // Helpers (need map reference, defined as inner functions)
-  const addVertex = (map, lat, lng) => {
-    verticesRef.current = [...verticesRef.current, [lat, lng]];
-    refreshSketch(map);
-  };
-
-  const refreshSketch = (map) => {
-    const layer = sketchLayerRef.current;
-    if (!layer) return;
-    layer.clearLayers();
-    guideLineRef.current = null;
-    const verts = verticesRef.current;
-    if (verts.length === 0) return;
-
-    // Lines between placed vertices
-    if (verts.length >= 2) {
-      layer.addLayer(L.polyline(verts, {
-        color: "#f1c40f", weight: 2, dashArray: "5 4", opacity: 0.85,
-      }));
-    }
-
-    // Vertex dots
-    verts.forEach(([lat, lng], i) => {
-      const dot = L.circleMarker([lat, lng], {
-        radius: i === 0 ? 7 : 5,
-        fillColor: i === 0 ? "#2ecc71" : "#f1c40f",
-        color: "#fff", weight: 1.5, fillOpacity: 1,
-      });
-      if (i === 0 && verts.length >= 3) {
-        dot.bindTooltip("Double-click to finish", { permanent: true, direction: "top", className: "draw-tip" });
-      }
-      layer.addLayer(dot);
-    });
-  };
-
-  const finishPolygon = (map) => {
-    const verts = verticesRef.current;
-    verticesRef.current = [];
-    sketchLayerRef.current?.clearLayers();
-    guideLineRef.current = null;
-    onPolygonCompleteRef.current(verts);
-  };
-
-  // ── Cursor + reset sketch when draw mode toggles ──────────────────
+  // ── Cursor + reset when draw mode changes ─────────────────────────
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     el.style.cursor = drawMode ? "crosshair" : "";
     if (!drawMode) {
+      if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
       verticesRef.current = [];
       sketchLayerRef.current?.clearLayers();
       guideLineRef.current = null;
@@ -141,13 +121,9 @@ export default function CollisionMap({
     if (!drawLayerRef.current) return;
     drawLayerRef.current.clearLayers();
     if (!polygon || polygon.length < 3) return;
-
     drawLayerRef.current.addLayer(L.polygon(polygon, {
-      color: "#f1c40f",
-      fillColor: "#f1c40f",
-      fillOpacity: 0.07,
-      weight: 2,
-      dashArray: "6 4",
+      color: "#f1c40f", fillColor: "#f1c40f",
+      fillOpacity: 0.07, weight: 2, dashArray: "6 4",
     }));
     polygon.forEach(([lat, lng]) => {
       drawLayerRef.current.addLayer(L.circleMarker([lat, lng], {
@@ -176,8 +152,7 @@ export default function CollisionMap({
         const pos = getLatLng(f);
         if (!pos) return;
         const sev = severityLabel((f.properties || {}).Classification_Of_Accident);
-        const w = sev === "Fatal" ? 1.0 : sev === "Non-fatal Injury" ? 0.6 : 0.3;
-        pts.push([pos.lat, pos.lng, w]);
+        pts.push([pos.lat, pos.lng, sev === "Fatal" ? 1.0 : sev === "Non-fatal Injury" ? 0.6 : 0.3]);
       });
       const buildHeat = () => {
         if (window.L?.heatLayer && pts.length > 0) {
@@ -283,11 +258,42 @@ export default function CollisionMap({
 
   return (
     <>
-      <style>{`
-        .draw-tip { background: rgba(13,13,26,0.9) !important; border: 1px solid rgba(241,196,15,0.4) !important; color: #f1c40f !important; font-size: 11px !important; }
-        .draw-tip::before { border-top-color: rgba(241,196,15,0.4) !important; }
-      `}</style>
+      <style>{`.draw-tip { background: rgba(13,13,26,0.9) !important; border: 1px solid rgba(241,196,15,0.4) !important; color: #f1c40f !important; font-size: 11px !important; }`}</style>
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
     </>
   );
+}
+
+// ── Pure helper: redraw in-progress sketch ────────────────────────────
+function refreshSketch(map, layer, verts, guideLineRef) {
+  if (!layer) return;
+  // Remove everything except the guide line
+  layer.eachLayer(l => {
+    if (l !== guideLineRef.current) layer.removeLayer(l);
+  });
+
+  if (verts.length === 0) return;
+
+  // Lines between placed vertices
+  if (verts.length >= 2) {
+    layer.addLayer(L.polyline(verts, {
+      color: "#f1c40f", weight: 2, dashArray: "5 4", opacity: 0.85,
+    }));
+  }
+
+  // Vertex dots
+  verts.forEach(([lat, lng], i) => {
+    const isFirst = i === 0;
+    const dot = L.circleMarker([lat, lng], {
+      radius: isFirst ? 7 : 5,
+      fillColor: isFirst ? "#2ecc71" : "#f1c40f",
+      color: "#fff", weight: 1.5, fillOpacity: 1,
+    });
+    if (isFirst && verts.length >= 3) {
+      dot.bindTooltip("Double-click to finish", {
+        permanent: true, direction: "top", className: "draw-tip",
+      });
+    }
+    layer.addLayer(dot);
+  });
 }

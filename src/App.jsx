@@ -124,6 +124,16 @@ export default function App() {
     setDrawMode(true);  // let them draw a new one
   };
 
+  // Clear mid-draw or committed polygon, reset to blank draw state
+  const clearDraw = () => {
+    setPolygon(null);
+    setCollisions([]);
+    setLocationLabel("");
+    setDrawMode(false);
+    // Brief timeout so drawMode=false clears sketch, then re-enable
+    setTimeout(() => setDrawMode(true), 50);
+  };
+
   // ── Radius helpers ────────────────────────────────────────────────
   const applyRadius = (km) => {
     setRadiusKm(km);
@@ -264,17 +274,31 @@ export default function App() {
           </div>
         )}
 
-        {/* Polygon hint */}
+        {/* Polygon hint + controls */}
         {selectionMode === "polygon" && drawMode && (
-          <div style={{ fontSize: 11, color: "#2ecc71", fontFamily: "'Space Mono', monospace" }}>
-            Click to add points · Double-click to finish
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ fontSize: 11, color: "#2ecc71", fontFamily: "'Space Mono', monospace" }}>
+              Click to add points · Double-click to finish
+            </div>
+            <button onClick={clearDraw} style={{
+              background: "rgba(231,76,60,0.15)", border: "1px solid rgba(231,76,60,0.4)",
+              borderRadius: 4, color: "#e74c3c", padding: "4px 10px",
+              fontSize: 11, cursor: "pointer",
+            }}>✕ Clear</button>
           </div>
         )}
         {selectionMode === "polygon" && !drawMode && polygon && (
-          <button onClick={clearPolygon} style={{
-            background: "none", border: `1px solid ${border}`, borderRadius: 4,
-            color: "#7f8c8d", padding: "4px 10px", fontSize: 11, cursor: "pointer",
-          }}>✏ Redraw</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button onClick={clearDraw} style={{
+              background: "none", border: `1px solid ${border}`, borderRadius: 4,
+              color: "#bdc3c7", padding: "4px 10px", fontSize: 11, cursor: "pointer",
+            }}>✏ Redraw</button>
+            <button onClick={clearDraw} style={{
+              background: "rgba(231,76,60,0.12)", border: "1px solid rgba(231,76,60,0.35)",
+              borderRadius: 4, color: "#e74c3c", padding: "4px 10px",
+              fontSize: 11, cursor: "pointer",
+            }}>✕ Clear</button>
+          </div>
         )}
       </header>
 
