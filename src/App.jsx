@@ -121,6 +121,12 @@ export default function App() {
     loadCollisionsInPolygon(verts);
   }, [loadCollisionsInPolygon]);
 
+  const handlePolygonChange = useCallback((verts) => {
+    setPolygon(verts);
+    setLocationLabel(`Polygon · ${verts.length} vertices`);
+    loadCollisionsInPolygon(verts);
+  }, [loadCollisionsInPolygon]);
+
   // ── Switch selection modes ────────────────────────────────────────
   const switchToRadius = () => {
     setSelectionMode("radius");
@@ -383,6 +389,7 @@ export default function App() {
             highlightGeoId={highlightGeoId}
             drawMode={drawMode}
             onPolygonComplete={handlePolygonComplete}
+            onPolygonChange={handlePolygonChange}
             polygon={selectionMode === "polygon" ? polygon : null}
             outOfAreaIds={new Set(outOfAreaIds)}
           />
