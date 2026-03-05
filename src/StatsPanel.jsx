@@ -53,7 +53,7 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", padding: 24 }}>
         <div style={{ textAlign: "center", color: "#9aa8b8" }}>
-          <div style={{ fontSize: 44, marginBottom: 14 }}>📍</div>
+          <svg width="36" height="44" viewBox="0 0 36 44" fill="#9aa8b8" style={{ marginBottom: 14 }}><path d="M18 0C11 0 5 6 5 13c0 10 13 27 13 27s13-17 13-27C31 6 25 0 18 0zm0 18a5 5 0 110-10 5 5 0 010 10z"/></svg>
           <div style={{ fontSize: 12, lineHeight: 1.7 }}>Click anywhere on the map<br />or search an address to load<br />collision data for that area.</div>
         </div>
       </div>

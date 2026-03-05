@@ -186,11 +186,13 @@ function CrossTab({ features, globalTypes }) {
               {Icon.cyclist} Cyc
             </th>
             <th style={{ ...css.th, borderLeft: "2px solid #2a3350", background: "#111620", width: 48, whiteSpace: "nowrap" }}>Total</th>
+            <th style={{ ...css.th, background: "#111620", width: 40, fontStyle: "italic", color: "#7a8fa8", whiteSpace: "nowrap" }}>%</th>
           </tr>
         </thead>
         <tbody>
           {activeSevs.map((sev, si) => {
             const rowTotal = features.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === sev).length;
+            const rowPct = grandTotal ? Math.round(rowTotal / grandTotal * 100) : 0;
             return (
               <tr key={sev} style={{ background: si % 2 === 0 ? "transparent" : "rgba(255,255,255,0.012)" }}>
                 <td style={{ ...css.td, ...css.tdLabel, color: SEV_COLORS[sev] || "#dce4f0" }}>{sev}</td>
@@ -209,6 +211,7 @@ function CrossTab({ features, globalTypes }) {
                   {cycBySev[sev] || "—"}
                 </td>
                 <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: SEV_COLORS[sev] || "#e8ecf8" }}>{rowTotal}</td>
+                <td style={{ ...css.td, color: "#9aa8b8", fontSize: 10, fontStyle: "italic" }}>{rowPct ? `${rowPct}%` : "—"}</td>
               </tr>
             );
           })}
@@ -220,6 +223,26 @@ function CrossTab({ features, globalTypes }) {
             <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
             <td style={{ ...css.td, ...css.tdTotal, color: cycTotal ? "#2ecc71" : css.zero.color }}>{cycTotal || "—"}</td>
             <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#e8ecf8", fontSize: 13, fontWeight: 700 }}>{grandTotal}</td>
+            <td style={{ ...css.td, ...css.tdTotal, color: "#9aa8b8", fontSize: 10, fontStyle: "italic" }}>100%</td>
+          </tr>
+          <tr>
+            <td style={{ ...css.td, ...css.tdLabel, color: "#7a8fa8", fontSize: 10, fontStyle: "italic" }}>% of total</td>
+            {types.map(t => {
+              const pct = grandTotal ? Math.round((colTotals[t] || 0) / grandTotal * 100) : 0;
+              return (
+                <td key={t} style={{ ...css.td, color: pct ? "#9aa8b8" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
+                  {pct ? `${pct}%` : "—"}
+                </td>
+              );
+            })}
+            <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: pedTotal ? "#9aa8b8" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
+              {pedTotal && grandTotal ? `${Math.round(pedTotal / grandTotal * 100)}%` : "—"}
+            </td>
+            <td style={{ ...css.td, color: cycTotal ? "#9aa8b8" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
+              {cycTotal && grandTotal ? `${Math.round(cycTotal / grandTotal * 100)}%` : "—"}
+            </td>
+            <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: "#9aa8b8", fontSize: 10, fontStyle: "italic" }}>—</td>
+            <td style={{ ...css.td, color: css.zero.color, fontSize: 10 }}>—</td>
           </tr>
         </tbody>
       </table>
@@ -355,9 +378,8 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
     const map = {};
     collisions.forEach(f => {
       const p = f.properties || {};
-      const key = p.Geo_ID || p.Location;
-      if (!key) return;
-      if (!map[key]) map[key] = { key, name: p.Location || String(key), geoId: p.Geo_ID, features: [], fatal: 0, injury: 0, pdo: 0 };
+      const key = p.Geo_ID || p.Location || "(No Location Data)";
+      if (!map[key]) map[key] = { key, name: p.Location || (p.Geo_ID ? `Geo_ID: ${p.Geo_ID}` : "(No Location Data)"), geoId: p.Geo_ID, features: [], fatal: 0, injury: 0, pdo: 0 };
       map[key].features.push(f);
       const sev = severityLabel(p.Classification_Of_Accident);
       if (sev === "Fatal") map[key].fatal++;
@@ -366,6 +388,10 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
     });
     return Object.values(map).sort((a, b) => b.features.length - a.features.length);
   }, [collisions]);
+
+  // Data integrity: count how many collisions are in location groups vs total
+  const groupedCount = useMemo(() => locations.reduce((sum, l) => sum + l.features.length, 0), [locations]);
+  const ungroupedCount = collisions.length - groupedCount;  // should always be 0 now
 
   // Compute a single global type list from ALL collisions — used by every table
   const globalTypes = useMemo(() => getTypes(collisions), [collisions]);
@@ -458,6 +484,13 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
                 <div style={{ fontSize: 9, color: "#7a8fa8", letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>{label}</div>
               </div>
             ))}
+          </div>
+
+          {/* Data integrity notice */}
+          <div style={{ marginTop: 14, fontSize: 11, color: groupedCount === collisions.length ? "#2ecc71" : "#e67e22" }}>
+            {groupedCount === collisions.length
+              ? `All ${collisions.length} records accounted for across ${locations.length} location${locations.length !== 1 ? "s" : ""}`
+              : `Warning: ${collisions.length} total records · ${groupedCount} grouped into ${locations.length} locations · ${ungroupedCount} without location data`}
           </div>
         </div>
 

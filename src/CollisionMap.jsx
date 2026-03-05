@@ -243,7 +243,7 @@ export default function CollisionMap({
       buildHeat();
       if (!heatLayerRef.current) setTimeout(buildHeat, 1000);
     } else {
-      collisions.slice(0, 2000).forEach((feature) => {
+      collisions.forEach((feature) => {
         const pos = getLatLng(feature);
         if (!pos) return;
         const p = feature.properties || {};
@@ -258,12 +258,17 @@ export default function CollisionMap({
 
         let marker;
         if (hasPed || hasCyc) {
-          const emoji = hasPed && hasCyc ? "🚶🚲" : hasPed ? "🚶" : "🚲";
+          const sz = isFatal ? 20 : 16;
+          const pedSvg = `<svg width="${sz}" height="${sz}" viewBox="0 0 11 14" fill="${color}" xmlns="http://www.w3.org/2000/svg"><circle cx="5.5" cy="1.5" r="1.5"/><path d="M3 4.5h5l-1 3H8l1 4H6.5l-.5-2-.5 2H4L5 7.5H4L3 4.5z"/><path d="M3 8l-1 3M8 8l1 3" stroke="${color}" stroke-width="0.8" fill="none" stroke-linecap="round"/></svg>`;
+          const cycSvg = `<svg width="${sz}" height="${sz}" viewBox="0 0 14 11" fill="none" stroke="${color}" stroke-width="1.4" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><circle cx="2.5" cy="8" r="2.5"/><circle cx="11.5" cy="8" r="2.5"/><path d="M2.5 8 L5 4 L8 5.5 L6 2.5 L9 2.5" stroke-width="1.2"/><path d="M9 2.5 L11.5 8"/><circle cx="9" cy="2" r="0.9" fill="${color}" stroke="none"/></svg>`;
+          const iconHtml = hasPed && hasCyc
+            ? `<div style="display:flex;gap:1px;filter:drop-shadow(0 0 2px ${color});opacity:${isOutOfArea ? 0.5 : 1}">${pedSvg}${cycSvg}</div>`
+            : `<div style="filter:drop-shadow(0 0 2px ${color});opacity:${isOutOfArea ? 0.5 : 1}">${hasPed ? pedSvg : cycSvg}</div>`;
           marker = L.marker([pos.lat, pos.lng], {
             icon: L.divIcon({
-              html: `<div style="font-size:${isFatal ? 18 : 14}px;line-height:1;filter:drop-shadow(0 0 3px ${color});opacity:${isOutOfArea ? 0.5 : 1};">${emoji}</div>`,
-              iconSize: [isFatal ? 22 : 18, isFatal ? 22 : 18],
-              iconAnchor: [isFatal ? 11 : 9, isFatal ? 11 : 9],
+              html: iconHtml,
+              iconSize: [hasPed && hasCyc ? sz * 2 + 2 : sz, sz],
+              iconAnchor: [hasPed && hasCyc ? sz : sz / 2, sz / 2],
               className: "",
             })
           });
@@ -279,19 +284,19 @@ export default function CollisionMap({
           });
         }
         const outOfAreaLine = isOutOfArea
-          ? `<div style="color:#f1c40f;font-size:10px;margin-bottom:2px">⚠ Outside selected area</div>` : "";
+          ? `<div style="color:#f1c40f;font-size:10px;margin-bottom:2px">&#9888; Outside selected area</div>` : "";
         const involveLine = involvement
-          ? `<div style="color:#2ecc71;font-weight:700">👤 ${involvement}</div>` : "";
+          ? `<div style="color:#2ecc71;font-weight:700">${involvement}</div>` : "";
         marker.bindPopup(`
           <div style="font-family:'Franklin Gothic Book','Franklin Gothic Medium','ITC Franklin Gothic','Arial Narrow',Arial,sans-serif;font-size:12px;min-width:200px;line-height:1.8">
             ${outOfAreaLine}
             <div style="color:${color};font-weight:700;font-size:13px;margin-bottom:4px">${sev}</div>
-            <div>📅 ${p.Accident_Date || "N/A"}</div>
-            <div>🛣 ${p.Location || "N/A"}</div>
-            <div>💥 ${collisionTypeLabel(p.Initial_Impact_Type)}</div>
+            <div>${p.Accident_Date || "N/A"}</div>
+            <div>${p.Location || "N/A"}</div>
+            <div>${collisionTypeLabel(p.Initial_Impact_Type)}</div>
             ${involveLine}
-            <div>🌧 ${p.Environment_Condition_1 || "N/A"}</div>
-            <div>🛤 ${p.Road_1_Surface_Condition || "N/A"}</div>
+            <div>${p.Environment_Condition_1 || "N/A"}</div>
+            <div>${p.Road_1_Surface_Condition || "N/A"}</div>
           </div>
         `);
         layerGroupRef.current.addLayer(marker);
