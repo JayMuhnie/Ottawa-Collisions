@@ -31,8 +31,7 @@ export default function App() {
       setCollisions(features);
     } catch (err) {
       setError(
-        "Could not load collision data from Ottawa Open Data. " +
-        "Check your internet connection and try again."
+        `Failed to load data: ${err.message}`
       );
       setCollisions([]);
     } finally {

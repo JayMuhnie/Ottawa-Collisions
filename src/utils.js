@@ -12,34 +12,38 @@ export const CHART_PALETTE = [
   "#023e8a", "#90e0ef", "#ade8f4",
 ];
 
-// Uses a Netlify serverless proxy to avoid CORS issues with the ArcGIS API
 const PROXY = "/api/collisions";
 
 export async function fetchCollisionsNear(lat, lng, km) {
   const radiusDeg = km / 111;
-  const envelope = JSON.stringify({
-    xmin: lng - radiusDeg,
-    ymin: lat - radiusDeg,
-    xmax: lng + radiusDeg,
-    ymax: lat + radiusDeg,
-    spatialReference: { wkid: 4326 },
-  });
+  const xmin = lng - radiusDeg;
+  const ymin = lat - radiusDeg;
+  const xmax = lng + radiusDeg;
+  const ymax = lat + radiusDeg;
 
+  // Use simple comma-separated bbox string — most reliable format for ArcGIS
   const params = new URLSearchParams({
     where: "1=1",
-    geometry: envelope,
+    geometry: `${xmin},${ymin},${xmax},${ymax}`,
     geometryType: "esriGeometryEnvelope",
+    inSR: "4326",
     spatialRel: "esriSpatialRelIntersects",
     outFields: "*",
     resultRecordCount: "2000",
     returnGeometry: "true",
+    outSR: "4326",
     f: "geojson",
   });
 
-  const res = await fetch(`${PROXY}?${params.toString()}`);
+  const url = `${PROXY}?${params.toString()}`;
+  console.log("Fetching:", url);
+
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
+  const text = await res.text();
+  console.log("Response preview:", text.slice(0, 200));
+  const data = JSON.parse(text);
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
   return data.features || [];
 }
 
@@ -58,7 +62,6 @@ export async function geocodeAddress(address) {
   };
 }
 
-// Field: "Classification_Of_Accident" e.g. "01 - Fatal", "02 - Non-fatal injury", "03 - P.D. only"
 export function severityLabel(val) {
   if (!val) return "Unknown";
   const v = String(val).toUpperCase();
@@ -68,7 +71,6 @@ export function severityLabel(val) {
   return "Unknown";
 }
 
-// Field: "Initial_Impact_Type" e.g. "03 - Rear end", "02 - Angle"
 export function collisionTypeLabel(val) {
   if (!val) return "Unknown";
   const stripped = String(val).replace(/^\d+\s*-\s*/, "").trim();
@@ -89,7 +91,6 @@ export function collisionTypeLabel(val) {
   return stripped || "Unknown";
 }
 
-// Field: "Accident_Year" (int) or "Accident_Date" (string "1/4/2017")
 export function extractYear(props) {
   if (props.Accident_Year) return String(props.Accident_Year);
   const raw = props.Accident_Date || "";
@@ -97,7 +98,6 @@ export function extractYear(props) {
   return match ? match[1] : null;
 }
 
-// GeoJSON feature: geometry.coordinates = [lng, lat]
 export function getLatLng(feature) {
   const coords = feature?.geometry?.coordinates;
   if (!coords || coords.length < 2) return null;
