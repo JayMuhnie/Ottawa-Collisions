@@ -383,12 +383,12 @@ export default function App() {
             background: "rgba(255,255,255,0.05)", border: `1px solid ${border}`,
             borderRadius: 6, color: savedMsg === "saved" ? "#2ecc71" : "#c8d4e0",
             padding: "6px 12px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
-          }}>{savedMsg === "saved" ? "✓ Saved" : "💾 Save Settings"}</button>
+          }}>{savedMsg === "saved" ? "Saved" : "Save Settings"}</button>
           <button onClick={loadSettings} title="Open a saved settings file to restore boundary, filters and exclusions" style={{
             background: "rgba(255,255,255,0.05)", border: `1px solid ${border}`,
             borderRadius: 6, color: savedMsg === "loaded" ? "#2ecc71" : savedMsg === "error" ? "#e74c3c" : "#c8d4e0",
             padding: "6px 12px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
-          }}>{savedMsg === "loaded" ? "✓ Loaded" : savedMsg === "error" ? "✕ Invalid file" : "↩ Load Settings"}</button>
+          }}>{savedMsg === "loaded" ? "Loaded" : savedMsg === "error" ? "✕ Invalid file" : "Load Settings"}</button>
         </div>
 
         {/* Mode toggle */}
@@ -398,7 +398,7 @@ export default function App() {
             border: "none", borderRadius: 4, color: selectionMode === "radius" ? "#000" : "#c8d4e0",
             padding: "4px 10px", fontSize: 11, cursor: "pointer",
             fontWeight: selectionMode === "radius" ? 700 : 400,
-          }}>⊙ Radius</button>
+          }}>( ) Radius</button>
           <button onClick={selectionMode === "polygon" ? (drawMode ? undefined : clearPolygon) : switchToPolygon} style={{
             background: selectionMode === "polygon" ? (drawMode ? "#2ecc71" : "#f1c40f") : "none",
             border: "none", borderRadius: 4,
@@ -406,7 +406,7 @@ export default function App() {
             padding: "4px 10px", fontSize: 11, cursor: "pointer",
             fontWeight: selectionMode === "polygon" ? 700 : 400,
           }}>
-            {selectionMode === "polygon" && drawMode ? "✏ Drawing…" : "⬡ Polygon"}
+            {selectionMode === "polygon" && drawMode ? "+ Drawing…" : "[ ] Polygon"}
           </button>
         </div>
 
@@ -464,7 +464,7 @@ export default function App() {
             <button onClick={clearDraw} style={{
               background: "none", border: `1px solid ${border}`, borderRadius: 4,
               color: "#c8d4e0", padding: "4px 10px", fontSize: 11, cursor: "pointer",
-            }}>✏ Redraw</button>
+            }}>~ Redraw</button>
             <button onClick={clearDraw} style={{
               background: "rgba(231,76,60,0.12)", border: "1px solid rgba(231,76,60,0.35)",
               borderRadius: 4, color: "#e74c3c", padding: "4px 10px",
@@ -492,7 +492,7 @@ export default function App() {
           background: "rgba(0,180,216,0.07)", borderBottom: "1px solid rgba(0,180,216,0.15)",
           padding: "5px 18px", fontSize: 11, color: accent, display: "flex", gap: 12,
         }}>
-          <span>📍 {locationLabel}</span>
+          <span style={{display:"flex",alignItems:"center",gap:5}}><svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor"><path d="M4 0C2.3 0 1 1.3 1 3c0 2.5 3 6.5 3 6.5s3-4 3-6.5C7 1.3 5.7 0 4 0zm0 4.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>{locationLabel}</span>
           <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
           {selectionMode === "radius" && <span>{radiusLabel} radius ·</span>}
           <span><b>{filteredCollisions.length.toLocaleString()}</b> collisions</span>
@@ -560,10 +560,10 @@ export default function App() {
               ))}
               <div style={{ borderTop: `1px solid ${border}`, marginTop: 6, paddingTop: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
-                  <span style={{ fontSize: 13 }}>🚶</span><span style={{ color: "#2ecc71" }}>Pedestrian involved</span>
+                  <svg width="11" height="14" viewBox="0 0 11 14" fill="#2ecc71" style={{display:"inline",verticalAlign:"middle",marginRight:6}}><circle cx="5.5" cy="1.5" r="1.5"/><path d="M3 4.5h5l-1 3H8l1 4H6.5l-.5-2-.5 2H4L5 7.5H4L3 4.5z"/></svg><span style={{ color: "#2ecc71" }}>Pedestrian involved</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13 }}>🚲</span><span style={{ color: "#2ecc71" }}>Cyclist involved</span>
+                  <svg width="14" height="11" viewBox="0 0 14 11" fill="none" stroke="#2ecc71" strokeWidth="1.2" strokeLinecap="round" style={{display:"inline",verticalAlign:"middle",marginRight:6}}><circle cx="2.5" cy="8" r="2.5"/><circle cx="11.5" cy="8" r="2.5"/><path d="M2.5 8 L5 4 L8 5.5 L6 2.5 L9 2.5" strokeWidth="1.1"/><path d="M9 2.5 L11.5 8"/><circle cx="9" cy="2" r="0.9" fill="#2ecc71" stroke="none"/></svg><span style={{ color: "#2ecc71" }}>Cyclist involved</span>
                 </div>
                 {outOfAreaIds.length > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
@@ -572,7 +572,7 @@ export default function App() {
                   </div>
                 )}
                 <div style={{ color: "#9aa8b8", fontSize: 10 }}>
-                  {selectionMode === "radius" ? "🟡 Search point · click map to query" : "⬡ Polygon mode active"}
+                  {selectionMode === "radius" ? "Search point · click map to query" : "[ ] Polygon mode active"}
                 </div>
               </div>
             </div>
@@ -630,7 +630,7 @@ export default function App() {
               justifyContent: "center", gap: 8,
               boxShadow: "0 2px 12px rgba(29,107,187,0.3)",
             }}>
-              ⎙ Generate Report
+              Print Report
               <span style={{ opacity: 0.7, fontWeight: 400, fontSize: 11 }}>
                 {filteredCollisions.length} collisions · {[...new Set(filteredCollisions.map(f => f.properties?.Geo_ID || f.properties?.Location).filter(Boolean))].length} locations
               </span>

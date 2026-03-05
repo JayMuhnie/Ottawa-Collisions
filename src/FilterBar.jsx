@@ -84,7 +84,7 @@ export default function FilterBar({
       <div style={S.group}>
         <span style={S.label}>Involves</span>
         <div style={{ display: "flex", gap: 4 }}>
-          {[["🚶 Pedestrian", "pedestrian"], ["🚲 Cyclist", "cyclist"]].map(([label, val]) => {
+          {[["Pedestrian", "pedestrian"], ["Cyclist", "cyclist"]].map(([label, val]) => {
             const active = filters.involvement.includes(val);
             return (
               <button key={val} onClick={() => {
@@ -106,7 +106,7 @@ export default function FilterBar({
       <div style={S.divider} />
 
       {/* Heatmap */}
-      <ToggleButton active={showHeatmap} onClick={onHeatmapToggle} color="#e67e22">🔥 Heatmap</ToggleButton>
+      <ToggleButton active={showHeatmap} onClick={onHeatmapToggle} color="#e67e22">Heatmap</ToggleButton>
 
       {/* Clear */}
       {hasFilters && (

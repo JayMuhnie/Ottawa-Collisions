@@ -42,7 +42,7 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", flexDirection: "column", gap: 12, color: "#9aa8b8" }}>
-        <div style={{ fontSize: 28, animation: "spin 1s linear infinite" }}>⟳</div>
+        <div style={{ width:28, height:28, border:"3px solid rgba(255,255,255,0.1)", borderTop:"3px solid #9aa8b8", borderRadius:"50%", animation:"spin 1s linear infinite" }} />
         <div style={{ fontSize: 12 }}>Loading collision data…</div>
         <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
       </div>
@@ -177,7 +177,7 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
             marginBottom: 2,
           }}
         >
-          ⬇ Export CSV
+          Export CSV
         </button>
       </div>
 
@@ -204,8 +204,8 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
             {(pedCount > 0 || cycCount > 0) && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
                 {[
-                  { label: "🚶 Pedestrian", value: pedCount, fatal: pedFatal, color: "#2ecc71" },
-                  { label: "🚲 Cyclist", value: cycCount, fatal: cycFatal, color: "#2ecc71" },
+                  { label: "Pedestrian", value: pedCount, fatal: pedFatal, color: "#2ecc71" },
+                  { label: "Cyclist", value: cycCount, fatal: cycFatal, color: "#2ecc71" },
                 ].map(({ label, value, fatal: f, color }) => (
                   <div key={label} style={{ ...S.card, padding: "10px 12px", marginBottom: 0 }}>
                     <div style={{ ...S.sectionTitle, marginBottom: 4 }}>{label}</div>

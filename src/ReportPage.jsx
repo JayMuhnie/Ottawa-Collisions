@@ -5,19 +5,51 @@ import { severityLabel, collisionTypeLabel, extractYear, involvementFlags } from
 const SEV_ORDER   = ["Fatal", "Non-fatal Injury", "Property Damage Only", "Unknown"];
 const SEV_COLORS  = { "Fatal": "#e74c3c", "Non-fatal Injury": "#e67e22", "Property Damage Only": "#5dade2", "Unknown": "#7f8c8d" };
 
+// ── Monochromatic SVG icons ──────────────────────────────────────────
+const Icon = {
+  pedestrian: (
+    <svg width="11" height="14" viewBox="0 0 11 14" fill="currentColor" style={{ display: "inline", verticalAlign: "middle" }}>
+      <circle cx="5.5" cy="1.5" r="1.5"/>
+      <path d="M3 4.5h5l-1 3H8l1 4H6.5l-.5-2-.5 2H4L5 7.5H4L3 4.5z"/>
+      <path d="M3 8l-1 3M8 8l1 3" stroke="currentColor" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
+    </svg>
+  ),
+  cyclist: (
+    <svg width="14" height="11" viewBox="0 0 14 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" style={{ display: "inline", verticalAlign: "middle" }}>
+      <circle cx="2.5" cy="8" r="2.5"/>
+      <circle cx="11.5" cy="8" r="2.5"/>
+      <path d="M2.5 8 L5 4 L8 5.5 L6 2.5 L9 2.5" strokeWidth="1.1"/>
+      <path d="M9 2.5 L11.5 8"/>
+      <circle cx="9" cy="2" r="0.9" fill="currentColor" stroke="none"/>
+    </svg>
+  ),
+  print: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "middle", marginRight: 5 }}>
+      <rect x="2" y="5" width="9" height="6" rx="1"/>
+      <path d="M4 5V2h5v3"/>
+      <path d="M4 9h5M4 11h3"/>
+      <rect x="9" y="6" width="1.2" height="1.2" fill="currentColor" stroke="none"/>
+    </svg>
+  ),
+  back: (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }}>
+      <path d="M7 5H3M3 5L5 3M3 5L5 7"/>
+    </svg>
+  ),
+};
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 // Collect all unique collision types across a list of features
 function getTypes(features) {
   const s = new Set();
   features.forEach(f => s.add(collisionTypeLabel((f.properties || {}).Initial_Impact_Type)));
-  // Sort alphabetically, keep Unknown last
   return [...s].filter(t => t !== "Unknown").sort().concat([...s].filter(t => t === "Unknown"));
 }
 
 // Build severity × type matrix + year breakdown + involvement totals
 function buildStats(features) {
-  const matrix = {};   // matrix[sev][type] = count
+  const matrix = {};
   const years  = {};
   let pedTotal = 0, cycTotal = 0, pedFatal = 0, cycFatal = 0;
 
@@ -41,19 +73,34 @@ function buildStats(features) {
   return { matrix, years, pedTotal, cycTotal, pedFatal, cycFatal };
 }
 
+// Shorten type labels for column headers
+function shortType(t) {
+  return t
+    .replace(" Collision", "")
+    .replace("Turning Movement", "Turning Mvmt")
+    .replace("Cyclist Collisions", "Cyclist")
+    .replace("Pedestrian Collisions", "Pedestrian");
+}
+
 // ── Shared styles ────────────────────────────────────────────────────
 const css = {
   th: {
     background: "#141920",
     color: "#a8b8cc",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 700,
-    letterSpacing: "0.09em",
+    letterSpacing: "0.07em",
     textTransform: "uppercase",
-    padding: "7px 10px",
+    padding: "6px 5px",
     textAlign: "center",
     border: "1px solid #1e2535",
-    whiteSpace: "nowrap",
+    // Allow wrapping ONLY at spaces/hyphens, never mid-word
+    whiteSpace: "normal",
+    wordBreak: "keep-all",
+    overflowWrap: "normal",
+    hyphens: "none",
+    verticalAlign: "bottom",
+    lineHeight: 1.3,
   },
   thLeft: { textAlign: "left" },
   td: {
@@ -80,10 +127,9 @@ const css = {
 };
 
 // ── Cross-tab matrix table ───────────────────────────────────────────
-// Rows = severity, columns = collision type
-// Extra columns: 🚶 Ped, 🚲 Cyc, Year breakdown, Row total
-function CrossTab({ features }) {
-  const types = getTypes(features);
+// globalTypes: fixed column set derived from the entire report dataset
+function CrossTab({ features, globalTypes }) {
+  const types = globalTypes || getTypes(features);
   const { matrix, years, pedTotal, cycTotal } = buildStats(features);
 
   const activeSevs = SEV_ORDER.filter(s =>
@@ -92,14 +138,12 @@ function CrossTab({ features }) {
 
   const yearKeys = Object.keys(years).sort();
 
-  // Column totals (by type)
   const colTotals = {};
   types.forEach(t => {
     colTotals[t] = activeSevs.reduce((sum, s) => sum + (matrix[s]?.[t] || 0), 0);
   });
   const grandTotal = features.length;
 
-  // Ped/cyc per severity
   const pedBySev = {}, cycBySev = {};
   features.forEach(f => {
     const p = f.properties || {};
@@ -126,28 +170,22 @@ function CrossTab({ features }) {
       <div style={{ fontSize: 11, color: "#7a8fa8", marginBottom: 8 }}>
         Data period: <span style={{ color: "#a8b8cc", fontWeight: 600 }}>{yearLabel}</span>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
         <thead>
           <tr>
-            <th style={{ ...css.th, ...css.thLeft, minWidth: 150 }}>Severity</th>
+            <th style={{ ...css.th, ...css.thLeft, width: 130, whiteSpace: "nowrap" }}>Severity</th>
             {types.map(t => (
-              <th key={t} style={{
-                ...css.th,
-                width: 52,
-                maxWidth: 52,
-                fontSize: 9,
-                whiteSpace: "normal",
-                wordBreak: "break-word",
-                verticalAlign: "bottom",
-                lineHeight: 1.3,
-                padding: "6px 4px",
-              }}>
-                {t.replace(" Collision", "").replace("Turning Movement", "Turning")}
+              <th key={t} style={{ ...css.th, width: 56 }}>
+                {shortType(t)}
               </th>
             ))}
-            <th style={{ ...css.th, borderLeft: "2px solid #2a3350" }}>🚶 Ped</th>
-            <th style={css.th}>🚲 Cyc</th>
-            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", background: "#111620" }}>Total</th>
+            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", width: 44, color: "#2ecc71" }}>
+              {Icon.pedestrian} Ped
+            </th>
+            <th style={{ ...css.th, width: 44, color: "#2ecc71" }}>
+              {Icon.cyclist} Cyc
+            </th>
+            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", background: "#111620", width: 48, whiteSpace: "nowrap" }}>Total</th>
           </tr>
         </thead>
         <tbody>
@@ -177,7 +215,7 @@ function CrossTab({ features }) {
           <tr style={{ borderTop: "2px solid #2a3350" }}>
             <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#a8b8cc" }}>Total</td>
             {types.map(t => (
-              <td key={t} style={{ ...css.td, ...css.tdTotal, color: "#e8ecf8" }}>{colTotals[t] || "—"}</td>
+              <td key={t} style={{ ...css.td, ...css.tdTotal, color: colTotals[t] ? "#e8ecf8" : css.zero.color }}>{colTotals[t] || "—"}</td>
             ))}
             <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
             <td style={{ ...css.td, ...css.tdTotal, color: cycTotal ? "#2ecc71" : css.zero.color }}>{cycTotal || "—"}</td>
@@ -190,9 +228,9 @@ function CrossTab({ features }) {
 }
 
 // ── Summary overview table (one row per location) ───────────────────
-function SummaryTable({ locations }) {
+function SummaryTable({ locations, globalTypes }) {
   const allFeatures = locations.flatMap(l => l.features);
-  const types = getTypes(allFeatures);
+  const types = globalTypes;
   const activeSevs = SEV_ORDER.filter(s =>
     allFeatures.some(f => severityLabel((f.properties || {}).Classification_Of_Accident) === s)
   );
@@ -211,16 +249,20 @@ function SummaryTable({ locations }) {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr>
-            <th style={{ ...css.th, width: 24, padding: "7px 6px" }}>#</th>
-            <th style={{ ...css.th, ...css.thLeft, minWidth: 160 }}>Location</th>
+            <th style={{ ...css.th, width: 24, padding: "7px 6px", whiteSpace: "nowrap" }}>#</th>
+            <th style={{ ...css.th, ...css.thLeft, minWidth: 160, whiteSpace: "nowrap" }}>Location</th>
             {activeSevs.map(s => (
-              <th key={s} style={{ ...css.th, color: SEV_COLORS[s], fontSize: 9, maxWidth: 70 }}>
+              <th key={s} style={{ ...css.th, color: SEV_COLORS[s], width: 56 }}>
                 {s === "Property Damage Only" ? "PDO" : s === "Non-fatal Injury" ? "Injury" : s}
               </th>
             ))}
-            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", fontSize: 9 }}>🚶 Ped</th>
-            <th style={{ ...css.th, fontSize: 9 }}>🚲 Cyc</th>
-            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", background: "#111620" }}>Total</th>
+            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", width: 44, color: "#2ecc71" }}>
+              {Icon.pedestrian} Ped
+            </th>
+            <th style={{ ...css.th, width: 44, color: "#2ecc71" }}>
+              {Icon.cyclist} Cyc
+            </th>
+            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", background: "#111620", whiteSpace: "nowrap" }}>Total</th>
           </tr>
         </thead>
         <tbody>
@@ -248,7 +290,6 @@ function SummaryTable({ locations }) {
               </tr>
             );
           })}
-          {/* Totals */}
           <tr style={{ borderTop: "2px solid #2a3350" }}>
             <td style={{ ...css.td, ...css.tdTotal }} />
             <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#a8b8cc" }}>Total</td>
@@ -272,13 +313,12 @@ function SummaryTable({ locations }) {
 }
 
 // ── Per-location section ─────────────────────────────────────────────
-function LocationDetail({ loc, index }) {
+function LocationDetail({ loc, index, globalTypes }) {
   const name = loc.name.replace(/\s*\([^)]*\)\s*$/, "");
   const { pedTotal, cycTotal, pedFatal, cycFatal } = buildStats(loc.features);
 
   return (
     <div style={{ marginBottom: 36, pageBreakInside: "avoid" }}>
-      {/* Header */}
       <div style={{
         display: "flex", alignItems: "center", gap: 12,
         borderBottom: "2px solid #1e2535", paddingBottom: 8, marginBottom: 14,
@@ -293,20 +333,18 @@ function LocationDetail({ loc, index }) {
           <div style={{ display: "flex", gap: 10 }}>
             {pedTotal > 0 && (
               <span style={{ fontSize: 11, color: "#2ecc71", background: "rgba(46,204,113,0.1)", borderRadius: 4, padding: "2px 8px" }}>
-                🚶 {pedTotal} ped{pedFatal > 0 ? `, ${pedFatal} fatal` : ""}
+                {Icon.pedestrian} {pedTotal} ped{pedFatal > 0 ? `, ${pedFatal} fatal` : ""}
               </span>
             )}
             {cycTotal > 0 && (
               <span style={{ fontSize: 11, color: "#2ecc71", background: "rgba(46,204,113,0.1)", borderRadius: 4, padding: "2px 8px" }}>
-                🚲 {cycTotal} cyc{cycFatal > 0 ? `, ${cycFatal} fatal` : ""}
+                {Icon.cyclist} {cycTotal} cyc{cycFatal > 0 ? `, ${cycFatal} fatal` : ""}
               </span>
             )}
           </div>
         )}
       </div>
-
-      {/* Cross-tab matrix */}
-      <CrossTab features={loc.features} compact={false} />
+      <CrossTab features={loc.features} globalTypes={globalTypes} />
     </div>
   );
 }
@@ -329,24 +367,14 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
     return Object.values(map).sort((a, b) => b.features.length - a.features.length);
   }, [collisions]);
 
+  // Compute a single global type list from ALL collisions — used by every table
+  const globalTypes = useMemo(() => getTypes(collisions), [collisions]);
+
   const totalFatal  = collisions.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === "Fatal").length;
   const totalInjury = collisions.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === "Non-fatal Injury").length;
   const totalPed    = collisions.filter(f => involvementFlags(f.properties || {}).ped).length;
   const totalCyc    = collisions.filter(f => involvementFlags(f.properties || {}).cyc).length;
   const generated   = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
-
-  // Format boundary info for display
-  const boundaryText = useMemo(() => {
-    if (!boundary) return null;
-    if (boundary.type === "radius") {
-      return `Radius: ${boundary.radiusKm * 1000}m around ${boundary.lat.toFixed(6)}, ${boundary.lng.toFixed(6)}`;
-    }
-    if (boundary.type === "polygon") {
-      const coords = boundary.vertices.map(([lat, lng]) => `${lat.toFixed(6)},${lng.toFixed(6)}`).join(" | ");
-      return `Polygon vertices: ${coords}`;
-    }
-    return null;
-  }, [boundary]);
 
   return (
     <div style={{
@@ -388,7 +416,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
           background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
           borderRadius: 6, color: "#a8b8cc", padding: "6px 14px",
           fontSize: 12, cursor: "pointer",
-        }}>← Back to Map</button>
+        }}>{Icon.back} Back to Map</button>
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 11, color: "#7a8fa8" }}>
           {collisions.length} collisions · {locations.length} locations
@@ -397,7 +425,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
           background: "#3d7de8", border: "none", borderRadius: 6,
           color: "#fff", padding: "6px 18px", fontSize: 12,
           fontWeight: 600, cursor: "pointer",
-        }}>⎙ Print / Save PDF</button>
+        }}>{Icon.print} Print / Save PDF</button>
       </div>
 
       {/* Page content */}
@@ -419,8 +447,8 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
               { label: "Fatal",     value: totalFatal,         color: "#e74c3c" },
               { label: "Injury",    value: totalInjury,        color: "#e67e22" },
               { label: "Locations", value: locations.length,   color: "#3d7de8" },
-              { label: "🚶 Ped",   value: totalPed,            color: "#2ecc71" },
-              { label: "🚲 Cyc",   value: totalCyc,            color: "#2ecc71" },
+              { label: "Ped",       value: totalPed,            color: "#2ecc71" },
+              { label: "Cyc",       value: totalCyc,            color: "#2ecc71" },
             ].map(({ label, value, color }) => (
               <div key={label} style={{
                 background: "rgba(255,255,255,0.03)", border: "1px solid #1e2535",
@@ -439,7 +467,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
             All Locations — Summary
           </h2>
           <div style={{ border: "1px solid #1e2535", borderRadius: 8, overflow: "hidden", padding: "12px 14px" }}>
-            <CrossTab features={collisions} />
+            <CrossTab features={collisions} globalTypes={globalTypes} />
           </div>
         </div>
 
@@ -450,7 +478,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
           Location Breakdown
         </h2>
         {locations.map((loc, i) => (
-          <LocationDetail key={loc.key} loc={loc} index={i} />
+          <LocationDetail key={loc.key} loc={loc} index={i} globalTypes={globalTypes} />
         ))}
 
       </div>
