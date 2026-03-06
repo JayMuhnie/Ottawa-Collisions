@@ -255,11 +255,38 @@ export function applyFilters(features, filters) {
   });
 }
 
+// Haversine distance in metres between two [lat, lng] points
+function haversineM([lat1, lng1], [lat2, lng2]) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+    * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Compute centroid [lat, lng] of all coordinate-bearing features in a location group
+function centroid(features) {
+  let latSum = 0, lngSum = 0, n = 0;
+  features.forEach(f => {
+    const c = f.geometry?.coordinates;
+    if (c) { lngSum += c[0]; latSum += c[1]; n++; }
+  });
+  return n ? [latSum / n, lngSum / n] : null;
+}
+
 // Group features by named location — the single source of truth for all counts.
-// Records without a Geo_ID or Location name are silently omitted from the list
-// (they are included in collision totals but don't form their own location groups).
+// Unnamed records (no Geo_ID, no Location) are proximity-snapped to the closest
+// named location within SNAP_M metres. If nothing is within range they are omitted
+// from location groups but still count toward collision totals.
+const SNAP_M = 30;
+
 export function getAllLocations(features) {
   const locationMap = {};
+  const unnamed = [];  // collect unnamed records for second pass
+
+  // ── Pass 1: build named location groups ──────────────────────────
   features.forEach(f => {
     const p = f.properties || {};
     const locName = (p.Location || "").trim();
@@ -267,12 +294,11 @@ export function getAllLocations(features) {
       ? String(p.Geo_ID).trim() : "";
 
     const key = geoId ? `gid:${geoId}` : locName ? `loc:${locName}` : null;
-    if (!key) return;  // no name — skip for location grouping
+    if (!key) { unnamed.push(f); return; }
 
     if (!locationMap[key]) {
-      locationMap[key] = { key, name: locName || `Geo_ID: ${geoId}`, geoId: geoId || null, features: [], fatal: 0, injury: 0, pdo: 0 };
+      locationMap[key] = { key, name: locName || `Geo_ID: ${geoId}`, geoId: geoId || null, features: [], nearbyCount: 0, fatal: 0, injury: 0, pdo: 0 };
     }
-    // Always upgrade to a real name if one arrives
     if (locName) locationMap[key].name = locName;
 
     locationMap[key].features.push(f);
@@ -281,6 +307,39 @@ export function getAllLocations(features) {
     else if (sev === "Non-fatal Injury") locationMap[key].injury++;
     else locationMap[key].pdo++;
   });
+
+  // ── Pass 2: snap unnamed records to closest named location ────────
+  if (unnamed.length > 0) {
+    // Pre-compute centroids for all named locations
+    const located = Object.values(locationMap).map(loc => ({
+      loc,
+      center: centroid(loc.features),
+    })).filter(e => e.center !== null);
+
+    unnamed.forEach(f => {
+      const coords = f.geometry?.coordinates;
+      if (!coords) return;
+      const pt = [coords[1], coords[0]];  // [lat, lng]
+
+      // Find closest named location
+      let bestLoc = null, bestDist = Infinity;
+      located.forEach(({ loc, center }) => {
+        const d = haversineM(pt, center);
+        if (d < bestDist) { bestDist = d; bestLoc = loc; }
+      });
+
+      if (bestLoc && bestDist <= SNAP_M) {
+        bestLoc.features.push(f);
+        bestLoc.nearbyCount++;
+        const sev = severityLabel((f.properties || {}).Classification_Of_Accident);
+        if (sev === "Fatal") bestLoc.fatal++;
+        else if (sev === "Non-fatal Injury") bestLoc.injury++;
+        else bestLoc.pdo++;
+      }
+      // else: truly isolated — omitted from location groups
+    });
+  }
+
   return Object.values(locationMap)
     .sort((a, b) => b.features.length - a.features.length);
 }

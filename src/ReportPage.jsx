@@ -352,6 +352,12 @@ function LocationDetail({ loc, index, globalTypes }) {
           background: "rgba(61,125,232,0.12)", borderRadius: 4, padding: "2px 7px",
         }}>#{index + 1}</span>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e8ecf8", flex: 1 }}>{name}</h3>
+        {loc.nearbyCount > 0 && (
+          <span style={{ fontSize: 10, color: "#9aa8b8", background: "rgba(255,255,255,0.06)", borderRadius: 4, padding: "2px 7px" }}
+            title="Collisions with no location ID snapped here by proximity">
+            +{loc.nearbyCount} nearby match{loc.nearbyCount !== 1 ? "es" : ""}
+          </span>
+        )}
         {(pedTotal > 0 || cycTotal > 0) && (
           <div style={{ display: "flex", gap: 10 }}>
             {pedTotal > 0 && (

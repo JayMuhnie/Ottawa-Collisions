@@ -89,6 +89,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
         {loc.fatal > 0 && <span style={{ fontSize: 10, background: "rgba(231,76,60,0.2)", color: "#e74c3c", padding: "1px 6px", borderRadius: 3 }}>{loc.fatal} fatal</span>}
         {loc.injury > 0 && <span style={{ fontSize: 10, background: "rgba(230,126,34,0.2)", color: "#e67e22", padding: "1px 6px", borderRadius: 3 }}>{loc.injury} injury</span>}
         {loc.pdo > 0 && <span style={{ fontSize: 10, background: "rgba(52,152,219,0.2)", color: "#3498db", padding: "1px 6px", borderRadius: 3 }}>{loc.pdo} PDO</span>}
+        {loc.nearbyCount > 0 && <span style={{ fontSize: 10, background: "rgba(255,255,255,0.06)", color: "#9aa8b8", padding: "1px 6px", borderRadius: 3 }} title="Collisions with no location ID snapped to this intersection by proximity">+{loc.nearbyCount} nearby match{loc.nearbyCount !== 1 ? "es" : ""}</span>}
         <span style={{ fontSize: 10, color: "#9aa8b8" }}>{years.join(", ")}</span>
       </div>
 
