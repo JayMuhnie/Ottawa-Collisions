@@ -398,13 +398,11 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
         map[key] = { key, name: "", geoId: geoId || null, features: [], fatal: 0, injury: 0, pdo: 0 };
       }
 
-      // Always prefer a real Location name — update if we have one and haven't set one yet
-      if (locName && !map[key].name) {
+      // Always upgrade to a real Location name if we have one — overwrite placeholders
+      if (locName) {
         map[key].name = locName;
-      }
-
-      // If still no name, fall back to coordinates or Geo_ID label
-      if (!map[key].name) {
+      } else if (!map[key].name) {
+        // No name yet — set a coordinate or Geo_ID placeholder
         const coords = geo?.coordinates;
         if (coords) {
           map[key].name = `${Number(coords[1]).toFixed(5)}, ${Number(coords[0]).toFixed(5)}`;
@@ -457,7 +455,10 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
             print-color-adjust: exact;
             color: #dce4f0 !important;
           }
-          @page { margin: 10mm 12mm; size: letter landscape; }
+          @page { 
+            size: letter landscape; 
+            margin: 15mm 12mm 18mm 12mm;
+          }
           h1 { font-size: 16pt !important; }
           h2 { font-size: 11pt !important; }
           h3 { font-size: 9pt !important; }
