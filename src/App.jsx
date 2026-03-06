@@ -552,7 +552,7 @@ export default function App() {
               borderRadius: 8, padding: "10px 14px", fontSize: 11,
               backdropFilter: "blur(4px)", zIndex: 1000,
             }}>
-              {[["Fatal","#e74c3c"],["Non-fatal Injury","#e67e22"],["Property Damage Only","#3498db"],["Unknown","#95a5a6"]].map(([label, color]) => (
+              {[["Fatal","#e74c3c"],["Non-fatal Injury","#e67e22"],["Property Damage Only","#3498db"],["Non-Reportable","#8e44ad"],["Unknown","#95a5a6"]].map(([label, color]) => (
                 <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <div style={{ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0 }} />
                   <span style={{ color: "#c8d4e0" }}>{label}</span>
