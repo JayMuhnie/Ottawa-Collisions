@@ -493,7 +493,6 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
               <span style={{ color: "#e67e22" }}> · {collisions.length - groupedCount} without location data (included in totals only)</span>
             )}
           </div>
-          </div>
         </div>
 
         {/* ── Section 1: All locations combined cross-tab ── */}
