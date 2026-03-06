@@ -53,27 +53,36 @@ export default function CollisionMap({
     map.on("click", (e) => {
       // If a marker popup just fired, ignore this map click entirely
       if (markerClickedRef.current) { markerClickedRef.current = false; return; }
-      if (!drawModeRef.current) { onMapClickRef.current(e.latlng.lat, e.latlng.lng); return; }
-      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-      const { lat, lng } = e.latlng;
-      clickTimerRef.current = setTimeout(() => {
-        clickTimerRef.current = null;
-        verticesRef.current = [...verticesRef.current, [lat, lng]];
-        refreshSketch(map, sketchLayerRef.current, verticesRef.current, guideLineRef);
-      }, 220);
+      // In draw mode, single click adds a polygon vertex
+      if (drawModeRef.current) {
+        if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+        const { lat, lng } = e.latlng;
+        clickTimerRef.current = setTimeout(() => {
+          clickTimerRef.current = null;
+          verticesRef.current = [...verticesRef.current, [lat, lng]];
+          refreshSketch(map, sketchLayerRef.current, verticesRef.current, guideLineRef);
+        }, 220);
+      }
+      // Non-draw mode: single click does nothing — boundary moves on double-click only
     });
 
     map.on("dblclick", (e) => {
       L.DomEvent.stopPropagation(e);
-      if (!drawModeRef.current) return;
-      if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
-      const verts = verticesRef.current;
-      if (verts.length < 3) return;
-      sketchLayerRef.current.clearLayers();
-      guideLineRef.current = null;
-      const completed = [...verts];
-      verticesRef.current = [];
-      onPolygonCompleteRef.current(completed);
+      if (drawModeRef.current) {
+        // Draw mode: double-click closes the polygon
+        if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
+        const verts = verticesRef.current;
+        if (verts.length < 3) return;
+        sketchLayerRef.current.clearLayers();
+        guideLineRef.current = null;
+        const completed = [...verts];
+        verticesRef.current = [];
+        onPolygonCompleteRef.current(completed);
+      } else {
+        // Normal mode: double-click moves the boundary center
+        if (markerClickedRef.current) { markerClickedRef.current = false; return; }
+        onMapClickRef.current(e.latlng.lat, e.latlng.lng);
+      }
     });
 
     map.on("mousemove", (e) => {

@@ -413,27 +413,27 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
             color: #dce4f0 !important;
           }
           @page { 
-            size: letter landscape; 
-            margin: 15mm 12mm 18mm 12mm;
+            size: letter portrait; 
+            margin: 18mm 20mm 22mm 20mm;
           }
           h1 { font-size: 16pt !important; }
           h2 { font-size: 11pt !important; }
           h3 { font-size: 9pt !important; }
           /* Force content to fit page width */
-          .report-content { max-width: 100% !important; padding: 0 !important; }
+          .report-content { max-width: 100% !important; padding: 0 8mm !important; }
           /* Tables: allow page breaks between rows, repeat header on each page */
           table { 
             width: 100% !important;
             page-break-inside: auto !important;
             table-layout: auto !important;
-            font-size: 9pt !important;
+            font-size: 8pt !important;
           }
           thead { display: table-header-group; }
           tr { page-break-inside: avoid; page-break-after: auto; }
           /* Keep each location block together where possible */
           .location-block { page-break-inside: avoid; }
-          /* Reduce padding in print to fit more columns */
-          td, th { padding: 4px 4px !important; font-size: 9pt !important; }
+          /* Cell padding — enough to breathe, not so much tables overflow */
+          td, th { padding: 5px 6px !important; font-size: 8pt !important; }
         }
       `}</style>
 
