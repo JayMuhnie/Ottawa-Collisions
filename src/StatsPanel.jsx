@@ -154,9 +154,9 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
             marginBottom: -1,
           }}>
             {t}
-            {t === "Locations" && repeatCount > 0 && (
+            {t === "Locations" && allLocations.length > 0 && (
               <span style={{ marginLeft: 5, background: accent, color: "#000", borderRadius: 10, padding: "0 5px", fontSize: 10 }}>
-                {repeatCount}
+                {allLocations.length}
               </span>
             )}
           </button>
