@@ -414,7 +414,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
           }
           @page { 
             size: letter portrait; 
-            margin: 18mm 20mm 22mm 20mm;
+            margin: 24mm 20mm 22mm 20mm;
           }
           h1 { font-size: 16pt !important; }
           h2 { font-size: 11pt !important; }
@@ -466,7 +466,7 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
         {/* Report title */}
         <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: "1px solid #1e2535" }}>
           <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#3d7de8", marginBottom: 6, textTransform: "uppercase" }}>
-            Ottawa Collision Analysis · {generated}
+            City of Ottawa Collisions (Open Data) · {generated}
           </div>
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "#e8ecf8" }}>
             Collision Summary Report
