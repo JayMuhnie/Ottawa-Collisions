@@ -85,15 +85,15 @@ function shortType(t) {
 // ── Shared styles ────────────────────────────────────────────────────
 const css = {
   th: {
-    background: "#F0F0EF",
-    color: "#4B5563",
+    background: "#141920",
+    color: "#a8b8cc",
     fontSize: 9,
     fontWeight: 700,
     letterSpacing: "0.07em",
     textTransform: "uppercase",
     padding: "6px 5px",
     textAlign: "center",
-    border: "1px solid #E5E7EB",
+    border: "1px solid #1e2535",
     // Allow wrapping ONLY at spaces/hyphens, never mid-word
     whiteSpace: "normal",
     wordBreak: "keep-all",
@@ -105,7 +105,7 @@ const css = {
   thLeft: { textAlign: "left" },
   td: {
     padding: "6px 6px",
-    color: "#1A1A1A",
+    color: "#dce4f0",
     border: "1px solid #1a2030",
     fontSize: 12,
     textAlign: "center",
@@ -121,7 +121,7 @@ const css = {
   },
   tdTotal: {
     fontWeight: 700,
-    background: "#F0F0EF",
+    background: "#141920",
   },
   zero: { color: "#4a5a6a" },
 };
@@ -156,8 +156,8 @@ function CrossTab({ features, globalTypes }) {
   const cellBg = (val, rowTotal) => {
     if (!val || !rowTotal) return "transparent";
     const pct = val / rowTotal;
-    if (pct > 0.5) return "rgba(0,120,200,0.12)";
-    if (pct > 0.25) return "rgba(0,120,200,0.06)";
+    if (pct > 0.5) return "rgba(61,125,232,0.18)";
+    if (pct > 0.25) return "rgba(0,120,200,0.09)";
     return "transparent";
   };
 
@@ -167,8 +167,8 @@ function CrossTab({ features, globalTypes }) {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 8 }}>
-        Data period: <span style={{ color: "#4B5563", fontWeight: 600 }}>{yearLabel}</span>
+      <div style={{ fontSize: 11, color: "#7a8fa8", marginBottom: 8 }}>
+        Data period: <span style={{ color: "#a8b8cc", fontWeight: 600 }}>{yearLabel}</span>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "auto" }}>
         <thead>
@@ -179,14 +179,14 @@ function CrossTab({ features, globalTypes }) {
                 {shortType(t)}
               </th>
             ))}
-            <th style={{ ...css.th, borderLeft: "2px solid #D1D5DB", width: 44, color: "#2ecc71" }}>
+            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", width: 44, color: "#2ecc71" }}>
               {Icon.pedestrian} Ped
             </th>
             <th style={{ ...css.th, width: 44, color: "#2ecc71" }}>
               {Icon.cyclist} Cyc
             </th>
-            <th style={{ ...css.th, borderLeft: "2px solid #D1D5DB", background: "#F9F9F8", width: 48, whiteSpace: "nowrap" }}>Total</th>
-            <th style={{ ...css.th, background: "#F9F9F8", width: 40, fontStyle: "italic", color: "#9CA3AF", whiteSpace: "nowrap" }}>%</th>
+            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", background: "#111620", width: 48, whiteSpace: "nowrap" }}>Total</th>
+            <th style={{ ...css.th, background: "#111620", width: 40, fontStyle: "italic", color: "#7a8fa8", whiteSpace: "nowrap" }}>%</th>
           </tr>
         </thead>
         <tbody>
@@ -194,54 +194,54 @@ function CrossTab({ features, globalTypes }) {
             const rowTotal = features.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === sev).length;
             const rowPct = grandTotal ? Math.round(rowTotal / grandTotal * 100) : 0;
             return (
-              <tr key={sev} style={{ background: si % 2 === 0 ? "transparent" : "rgba(0,0,0,0.02)" }}>
-                <td style={{ ...css.td, ...css.tdLabel, color: SEV_COLORS[sev] || "#1A1A1A" }}>{sev}</td>
+              <tr key={sev} style={{ background: si % 2 === 0 ? "transparent" : "rgba(255,255,255,0.012)" }}>
+                <td style={{ ...css.td, ...css.tdLabel, color: SEV_COLORS[sev] || "#dce4f0" }}>{sev}</td>
                 {types.map(t => {
                   const val = matrix[sev]?.[t] || 0;
                   return (
-                    <td key={t} style={{ ...css.td, background: cellBg(val, rowTotal), color: val ? "#1A1A1A" : css.zero.color }}>
+                    <td key={t} style={{ ...css.td, background: cellBg(val, rowTotal), color: val ? "#e8ecf8" : css.zero.color }}>
                       {val || "—"}
                     </td>
                   );
                 })}
-                <td style={{ ...css.td, borderLeft: "2px solid #D1D5DB", color: pedBySev[sev] ? "#2ecc71" : css.zero.color }}>
+                <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: pedBySev[sev] ? "#2ecc71" : css.zero.color }}>
                   {pedBySev[sev] || "—"}
                 </td>
                 <td style={{ ...css.td, color: cycBySev[sev] ? "#2ecc71" : css.zero.color }}>
                   {cycBySev[sev] || "—"}
                 </td>
-                <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #D1D5DB", color: SEV_COLORS[sev] || "#1A1A1A" }}>{rowTotal}</td>
-                <td style={{ ...css.td, color: "#6B7280", fontSize: 10, fontStyle: "italic" }}>{rowPct ? `${rowPct}%` : "—"}</td>
+                <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: SEV_COLORS[sev] || "#e8ecf8" }}>{rowTotal}</td>
+                <td style={{ ...css.td, color: "#9aa8b8", fontSize: 10, fontStyle: "italic" }}>{rowPct ? `${rowPct}%` : "—"}</td>
               </tr>
             );
           })}
-          <tr style={{ borderTop: "2px solid #D1D5DB" }}>
-            <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#4B5563" }}>Total</td>
+          <tr style={{ borderTop: "2px solid #2a3350" }}>
+            <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#a8b8cc" }}>Total</td>
             {types.map(t => (
-              <td key={t} style={{ ...css.td, ...css.tdTotal, color: colTotals[t] ? "#1A1A1A" : css.zero.color }}>{colTotals[t] || "—"}</td>
+              <td key={t} style={{ ...css.td, ...css.tdTotal, color: colTotals[t] ? "#e8ecf8" : css.zero.color }}>{colTotals[t] || "—"}</td>
             ))}
-            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #D1D5DB", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
+            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
             <td style={{ ...css.td, ...css.tdTotal, color: cycTotal ? "#2ecc71" : css.zero.color }}>{cycTotal || "—"}</td>
-            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #D1D5DB", color: "#1A1A1A", fontSize: 13, fontWeight: 700 }}>{grandTotal}</td>
-            <td style={{ ...css.td, ...css.tdTotal, color: "#6B7280", fontSize: 10, fontStyle: "italic" }}>100%</td>
+            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#e8ecf8", fontSize: 13, fontWeight: 700 }}>{grandTotal}</td>
+            <td style={{ ...css.td, ...css.tdTotal, color: "#9aa8b8", fontSize: 10, fontStyle: "italic" }}>100%</td>
           </tr>
           <tr>
-            <td style={{ ...css.td, ...css.tdLabel, color: "#9CA3AF", fontSize: 10, fontStyle: "italic" }}>% of total</td>
+            <td style={{ ...css.td, ...css.tdLabel, color: "#7a8fa8", fontSize: 10, fontStyle: "italic" }}>% of total</td>
             {types.map(t => {
               const pct = grandTotal ? Math.round((colTotals[t] || 0) / grandTotal * 100) : 0;
               return (
-                <td key={t} style={{ ...css.td, color: pct ? "#6B7280" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
+                <td key={t} style={{ ...css.td, color: pct ? "#9aa8b8" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
                   {pct ? `${pct}%` : "—"}
                 </td>
               );
             })}
-            <td style={{ ...css.td, borderLeft: "2px solid #D1D5DB", color: pedTotal ? "#6B7280" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
+            <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: pedTotal ? "#9aa8b8" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
               {pedTotal && grandTotal ? `${Math.round(pedTotal / grandTotal * 100)}%` : "—"}
             </td>
-            <td style={{ ...css.td, color: cycTotal ? "#6B7280" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
+            <td style={{ ...css.td, color: cycTotal ? "#9aa8b8" : css.zero.color, fontSize: 10, fontStyle: "italic" }}>
               {cycTotal && grandTotal ? `${Math.round(cycTotal / grandTotal * 100)}%` : "—"}
             </td>
-            <td style={{ ...css.td, borderLeft: "2px solid #D1D5DB", color: "#6B7280", fontSize: 10, fontStyle: "italic" }}>—</td>
+            <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: "#9aa8b8", fontSize: 10, fontStyle: "italic" }}>—</td>
             <td style={{ ...css.td, color: css.zero.color, fontSize: 10 }}>—</td>
           </tr>
         </tbody>
@@ -265,8 +265,8 @@ function SummaryTable({ locations, globalTypes }) {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 8 }}>
-        Data period: <span style={{ color: "#4B5563", fontWeight: 600 }}>{yearLabel}</span>
+      <div style={{ fontSize: 11, color: "#7a8fa8", marginBottom: 8 }}>
+        Data period: <span style={{ color: "#a8b8cc", fontWeight: 600 }}>{yearLabel}</span>
       </div>
       <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -279,13 +279,13 @@ function SummaryTable({ locations, globalTypes }) {
                 {s === "Property Damage Only" ? "PDO" : s === "Non-fatal Injury" ? "Injury" : s}
               </th>
             ))}
-            <th style={{ ...css.th, borderLeft: "2px solid #D1D5DB", width: 44, color: "#2ecc71" }}>
+            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", width: 44, color: "#2ecc71" }}>
               {Icon.pedestrian} Ped
             </th>
             <th style={{ ...css.th, width: 44, color: "#2ecc71" }}>
               {Icon.cyclist} Cyc
             </th>
-            <th style={{ ...css.th, borderLeft: "2px solid #D1D5DB", background: "#F9F9F8", whiteSpace: "nowrap" }}>Total</th>
+            <th style={{ ...css.th, borderLeft: "2px solid #2a3350", background: "#111620", whiteSpace: "nowrap" }}>Total</th>
           </tr>
         </thead>
         <tbody>
@@ -297,9 +297,9 @@ function SummaryTable({ locations, globalTypes }) {
               sevCounts[s] = (sevCounts[s] || 0) + 1;
             });
             return (
-              <tr key={loc.key} style={{ background: i % 2 === 0 ? "transparent" : "rgba(0,0,0,0.02)" }}>
-                <td style={{ ...css.td, color: "#9CA3AF", fontSize: 10, padding: "6px" }}>{i + 1}</td>
-                <td style={{ ...css.td, ...css.tdLabel, color: "#1A1A1A" }}>
+              <tr key={loc.key} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.012)" }}>
+                <td style={{ ...css.td, color: "#7a8fa8", fontSize: 10, padding: "6px" }}>{i + 1}</td>
+                <td style={{ ...css.td, ...css.tdLabel, color: "#e8ecf8" }}>
                   {loc.name.replace(/\s*\([^)]*\)\s*$/, "")}
                 </td>
                 {activeSevs.map(s => (
@@ -307,26 +307,26 @@ function SummaryTable({ locations, globalTypes }) {
                     {sevCounts[s] || "—"}
                   </td>
                 ))}
-                <td style={{ ...css.td, borderLeft: "2px solid #D1D5DB", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
+                <td style={{ ...css.td, borderLeft: "2px solid #2a3350", color: pedTotal ? "#2ecc71" : css.zero.color }}>{pedTotal || "—"}</td>
                 <td style={{ ...css.td, color: cycTotal ? "#2ecc71" : css.zero.color }}>{cycTotal || "—"}</td>
-                <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #D1D5DB", color: "#1A1A1A" }}>{loc.features.length}</td>
+                <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#e8ecf8" }}>{loc.features.length}</td>
               </tr>
             );
           })}
-          <tr style={{ borderTop: "2px solid #D1D5DB" }}>
+          <tr style={{ borderTop: "2px solid #2a3350" }}>
             <td style={{ ...css.td, ...css.tdTotal }} />
-            <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#4B5563" }}>Total</td>
+            <td style={{ ...css.td, ...css.tdLabel, ...css.tdTotal, color: "#a8b8cc" }}>Total</td>
             {activeSevs.map(s => {
               const n = allFeatures.filter(f => severityLabel((f.properties || {}).Classification_Of_Accident) === s).length;
               return <td key={s} style={{ ...css.td, ...css.tdTotal, color: n ? SEV_COLORS[s] : css.zero.color }}>{n || "—"}</td>;
             })}
-            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #D1D5DB", color: "#2ecc71" }}>
+            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#2ecc71" }}>
               {allFeatures.filter(f => involvementFlags(f.properties || {}).ped).length || "—"}
             </td>
             <td style={{ ...css.td, ...css.tdTotal, color: "#2ecc71" }}>
               {allFeatures.filter(f => involvementFlags(f.properties || {}).cyc).length || "—"}
             </td>
-            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #D1D5DB", color: "#1A1A1A", fontWeight: 700, fontSize: 13 }}>{allFeatures.length}</td>
+            <td style={{ ...css.td, ...css.tdTotal, borderLeft: "2px solid #2a3350", color: "#e8ecf8", fontWeight: 700, fontSize: 13 }}>{allFeatures.length}</td>
           </tr>
         </tbody>
       </table>
@@ -344,16 +344,16 @@ function LocationDetail({ loc, index, globalTypes }) {
     <div className="location-block" style={{ marginBottom: 36 }}>
       <div style={{
         display: "flex", alignItems: "center", gap: 12,
-        borderBottom: "2px solid #E5E7EB", paddingBottom: 8, marginBottom: 14,
+        borderBottom: "2px solid #1e2535", paddingBottom: 8, marginBottom: 14,
       }}>
         <span style={{
           fontSize: 10, fontWeight: 700, color: "#0078C8",
           fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
-          background: "rgba(0,120,200,0.08)", borderRadius: 4, padding: "2px 7px",
+          background: "rgba(0,120,200,0.12)", borderRadius: 4, padding: "2px 7px",
         }}>#{index + 1}</span>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#1A1A1A", flex: 1 }}>{name}</h3>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e8ecf8", flex: 1 }}>{name}</h3>
         {loc.nearbyCount > 0 && (
-          <span style={{ fontSize: 10, color: "#6B7280", background: "rgba(0,0,0,0.06)", borderRadius: 4, padding: "2px 7px" }}
+          <span style={{ fontSize: 10, color: "#9aa8b8", background: "rgba(255,255,255,0.06)", borderRadius: 4, padding: "2px 7px" }}
             title="Collisions with no location ID snapped here by proximity">
             +{loc.nearbyCount} nearby match{loc.nearbyCount !== 1 ? "es" : ""}
           </span>
@@ -395,62 +395,74 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#F5F5F4",
+      background: "#0d1117",
       fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
-      color: "#1A1A1A",
+      color: "#dce4f0",
     }}>
       <style>{`
         * { box-sizing: border-box; }
         body { font-family: 'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif !important; }
         @media print {
+          /* ── Hide screen chrome ── */
           .no-print { display: none !important; }
-          html, body, #root {
-            overflow: visible !important;
-            height: auto !important;
-            background: #F5F5F4 !important;
+
+          /* ── Page setup ── */
+          @page {
+            size: letter portrait;
+            margin: 20mm 18mm 22mm 18mm;
+          }
+
+          /* ── White background everywhere — saves ink ── */
+          html, body, #root { overflow: visible !important; height: auto !important; }
+          * {
+            background: #ffffff !important;
+            color: #111111 !important;
+            box-shadow: none !important;
+            border-color: #cccccc !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            color: #1A1A1A !important;
           }
-          @page { 
-            size: letter portrait; 
-            margin: 24mm 20mm 22mm 20mm;
-          }
+
+          /* ── Content area ── */
+          .report-content { max-width: 100% !important; padding: 8mm 6mm 0 6mm !important; }
+
+          /* ── Typography ── */
           h1 { font-size: 16pt !important; }
           h2 { font-size: 11pt !important; }
           h3 { font-size: 9pt !important; }
-          /* Force content to fit page width */
-          .report-content { max-width: 100% !important; padding: 10mm 8mm 0 8mm !important; }
-          /* Tables: allow page breaks between rows, repeat header on each page */
-          table { 
+
+          /* ── Tables ── */
+          table {
             width: 100% !important;
             page-break-inside: auto !important;
             table-layout: auto !important;
             font-size: 8pt !important;
+            border-collapse: collapse !important;
           }
           thead { display: table-header-group; }
           tr { page-break-inside: avoid; page-break-after: auto; }
-          /* Keep each location block together where possible */
+          td, th { padding: 4px 6px !important; font-size: 8pt !important; border: 1px solid #cccccc !important; }
+          thead th { background: #eeeeee !important; font-weight: 700 !important; }
+
+          /* ── Location blocks ── */
           .location-block { page-break-inside: avoid; }
-          /* Cell padding — enough to breathe, not so much tables overflow */
-          td, th { padding: 5px 6px !important; font-size: 8pt !important; }
         }
       `}</style>
 
       {/* Toolbar */}
       <div className="no-print" style={{
         position: "sticky", top: 0, zIndex: 100,
-        background: "rgba(245,245,244,0.97)", backdropFilter: "blur(8px)",
-        borderBottom: "1px solid rgba(0,0,0,0.08)",
+        background: "rgba(13,17,23,0.96)", backdropFilter: "blur(8px)",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
         padding: "10px 28px", display: "flex", alignItems: "center", gap: 12,
       }}>
         <button onClick={onBack} style={{
-          background: "rgba(0,0,0,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 6, color: "#374151", padding: "6px 14px",
+          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 6, color: "#a8b8cc", padding: "6px 14px",
           fontSize: 12, cursor: "pointer",
         }}>{Icon.back} Back to Map</button>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, color: "#9CA3AF" }}>
+        <span style={{ fontSize: 11, color: "#7a8fa8" }}>
           {collisions.length} collisions · {locations.length} locations
         </span>
         <button onClick={() => window.print()} style={{
@@ -464,18 +476,18 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
       <div className="report-content" style={{ maxWidth: 960, margin: "0 auto", padding: "32px 28px" }}>
 
         {/* Report title */}
-        <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: "1px solid #E5E7EB" }}>
+        <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: "1px solid #1e2535" }}>
           <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#0078C8", marginBottom: 6, textTransform: "uppercase" }}>
             City of Ottawa Collisions (Open Data) · {generated}
           </div>
-          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "#1A1A1A" }}>
+          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "#e8ecf8" }}>
             Collision Summary Report
           </h1>
 
           {/* KPI row */}
           <div style={{ display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap" }}>
             {[
-              { label: "Total",     value: collisions.length, color: "#1A1A1A" },
+              { label: "Total",     value: collisions.length, color: "#e8ecf8" },
               { label: "Fatal",     value: totalFatal,         color: "#e74c3c" },
               { label: "Injury",    value: totalInjury,        color: "#e67e22" },
               { label: "Locations", value: locations.length,   color: "#0078C8" },
@@ -483,17 +495,17 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
               { label: "Cyc",       value: totalCyc,            color: "#2ecc71" },
             ].map(({ label, value, color }) => (
               <div key={label} style={{
-                background: "#FFFFFF", border: "1px solid #E5E7EB",
+                background: "rgba(255,255,255,0.03)", border: "1px solid #1e2535",
                 borderRadius: 8, padding: "10px 16px", minWidth: 90,
               }}>
                 <div style={{ fontSize: 20, fontWeight: 700, color }}>{value}</div>
-                <div style={{ fontSize: 9, color: "#9CA3AF", letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>{label}</div>
+                <div style={{ fontSize: 9, color: "#7a8fa8", letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>{label}</div>
               </div>
             ))}
           </div>
 
           {/* Data integrity notice */}
-          <div style={{ marginTop: 14, fontSize: 11, color: "#9CA3AF" }}>
+          <div style={{ marginTop: 14, fontSize: 11, color: "#7a8fa8" }}>
             {collisions.length} collision{collisions.length !== 1 ? "s" : ""} across {locations.length} named location{locations.length !== 1 ? "s" : ""}
             {groupedCount < collisions.length && (
               <span style={{ color: "#e67e22" }}> · {collisions.length - groupedCount} without location data (included in totals only)</span>
@@ -503,18 +515,18 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
 
         {/* ── Section 1: All locations combined cross-tab ── */}
         <div style={{ marginBottom: 36 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: "#4B5563", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, color: "#a8b8cc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
             All Locations — Summary
           </h2>
-          <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden", padding: "12px 14px" }}>
+          <div style={{ border: "1px solid #1e2535", borderRadius: 8, overflow: "hidden", padding: "12px 14px" }}>
             <CrossTab features={collisions} globalTypes={globalTypes} />
           </div>
         </div>
 
-        <div style={{ borderTop: "1px solid #E5E7EB", marginBottom: 32 }} />
+        <div style={{ borderTop: "1px solid #1e2535", marginBottom: 32 }} />
 
         {/* ── Section 2: Per-location cross-tabs ── */}
-        <h2 style={{ fontSize: 13, fontWeight: 700, color: "#4B5563", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 24, marginTop: 0 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 700, color: "#a8b8cc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 24, marginTop: 0 }}>
           Location Breakdown
         </h2>
         {locations.map((loc, i) => (
