@@ -11,8 +11,8 @@ import {
   namedLocationCount,
 } from "./utils";
 
-const accent = "#00b4d8";
-const border = "rgba(255,255,255,0.08)";
+const accent = "#0078C8";
+const border = "rgba(0,0,0,0.10)";
 
 const RADIUS_PRESETS = [
   { label: "250m", km: 0.25 },
@@ -342,11 +342,11 @@ export default function App() {
   document.getElementById("root").style.height = "";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0d0d1a" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#F5F5F4" }}>
 
       {/* ── Header ───────────────────────────────────────────────── */}
       <header style={{
-        background: "#111124", borderBottom: `1px solid ${border}`,
+        background: "#1A1A1A", borderBottom: `1px solid rgba(0,0,0,0.2)`,
         padding: "10px 18px", display: "flex", alignItems: "center",
         gap: 14, flexShrink: 0, flexWrap: "wrap",
       }}>
@@ -366,44 +366,44 @@ export default function App() {
             onKeyDown={e => e.key === "Enter" && handleSearch()}
             placeholder="Search address or intersection…"
             style={{
-              background: "rgba(255,255,255,0.06)", border: `1px solid ${border}`,
-              borderRadius: 6, color: "#dce4f0", padding: "7px 12px",
+              background: "rgba(255,255,255,0.08)", border: `1px solid rgba(255,255,255,0.15)`,
+              borderRadius: 6, color: "#F5F5F4", padding: "7px 12px",
               fontSize: 13, width: 240, outline: "none",
             }}
             onFocus={e => e.target.style.borderColor = accent}
             onBlur={e => e.target.style.borderColor = border}
           />
           <button onClick={handleSearch} disabled={geocoding || loading} style={{
-            background: accent, border: "none", borderRadius: 6, color: "#000",
+            background: accent, border: "none", borderRadius: 6, color: "#fff",
             padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
             letterSpacing: "0.06em", opacity: geocoding ? 0.7 : 1,
           }}>{geocoding ? "…" : "SEARCH"}</button>
 
           {/* Save / Load settings */}
           <button onClick={saveSettings} title="Save current boundary, filters and exclusions to browser storage" style={{
-            background: "rgba(255,255,255,0.05)", border: `1px solid ${border}`,
-            borderRadius: 6, color: savedMsg === "saved" ? "#2ecc71" : "#c8d4e0",
+            background: "rgba(255,255,255,0.08)", border: `1px solid rgba(255,255,255,0.15)`,
+            borderRadius: 6, color: savedMsg === "saved" ? "#2ecc71" : "#D1D5DB",
             padding: "6px 12px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
           }}>{savedMsg === "saved" ? "Saved" : "Save Settings"}</button>
           <button onClick={loadSettings} title="Open a saved settings file to restore boundary, filters and exclusions" style={{
-            background: "rgba(255,255,255,0.05)", border: `1px solid ${border}`,
-            borderRadius: 6, color: savedMsg === "loaded" ? "#2ecc71" : savedMsg === "error" ? "#e74c3c" : "#c8d4e0",
+            background: "rgba(255,255,255,0.08)", border: `1px solid rgba(255,255,255,0.15)`,
+            borderRadius: 6, color: savedMsg === "loaded" ? "#2ecc71" : savedMsg === "error" ? "#e74c3c" : "#D1D5DB",
             padding: "6px 12px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
           }}>{savedMsg === "loaded" ? "Loaded" : savedMsg === "error" ? "✕ Invalid file" : "Load Settings"}</button>
         </div>
 
         {/* Mode toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "3px 4px", border: `1px solid ${border}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "3px 4px", border: `1px solid rgba(255,255,255,0.15)` }}>
           <button onClick={switchToRadius} style={{
             background: selectionMode === "radius" ? accent : "none",
-            border: "none", borderRadius: 4, color: selectionMode === "radius" ? "#000" : "#c8d4e0",
+            border: "none", borderRadius: 4, color: selectionMode === "radius" ? "#fff" : "#D1D5DB",
             padding: "4px 10px", fontSize: 11, cursor: "pointer",
             fontWeight: selectionMode === "radius" ? 700 : 400,
           }}>( ) Radius</button>
           <button onClick={selectionMode === "polygon" ? (drawMode ? undefined : clearPolygon) : switchToPolygon} style={{
             background: selectionMode === "polygon" ? (drawMode ? "#2ecc71" : "#f1c40f") : "none",
             border: "none", borderRadius: 4,
-            color: selectionMode === "polygon" ? "#000" : "#c8d4e0",
+            color: selectionMode === "polygon" ? "#fff" : "#D1D5DB",
             padding: "4px 10px", fontSize: 11, cursor: "pointer",
             fontWeight: selectionMode === "polygon" ? 700 : 400,
           }}>
@@ -414,12 +414,12 @@ export default function App() {
         {/* Radius controls — only in radius mode */}
         {selectionMode === "radius" && (
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#9aa8b8", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>RADIUS</span>
+            <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#9CA3AF", fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" }}>RADIUS</span>
             {RADIUS_PRESETS.map(({ label, km }) => (
               <button key={km} onClick={() => applyRadius(km)} style={{
-                background: !isCustomRadius && radiusKm === km ? accent : "rgba(255,255,255,0.06)",
+                background: !isCustomRadius && radiusKm === km ? accent : "rgba(255,255,255,0.08)",
                 border: "none", borderRadius: 4,
-                color: !isCustomRadius && radiusKm === km ? "#000" : "#c8d4e0",
+                color: !isCustomRadius && radiusKm === km ? "#fff" : "#D1D5DB",
                 padding: "5px 8px", fontSize: 11, cursor: "pointer",
                 fontWeight: !isCustomRadius && radiusKm === km ? 700 : 400,
               }}>{label}</button>
@@ -433,16 +433,16 @@ export default function App() {
                 placeholder="e.g. 750"
                 title="Custom radius in metres"
                 style={{
-                  background: "rgba(255,255,255,0.06)",
-                  border: `1px solid ${isCustomRadius ? accent : border}`,
-                  borderRadius: 4, color: "#dce4f0",
+                  background: "rgba(255,255,255,0.08)",
+                  border: `1px solid ${isCustomRadius ? accent : "rgba(255,255,255,0.15)"}`,
+                  borderRadius: 4, color: "#F5F5F4",
                   padding: "4px 6px", fontSize: 11, width: 58,
                   outline: "none", textAlign: "right",
                   fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
                 }}
                 onFocus={e => e.target.style.borderColor = accent}
               />
-              <span style={{ fontSize: 10, color: "#9aa8b8" }}>m</span>
+              <span style={{ fontSize: 10, color: "#9CA3AF" }}>m</span>
             </div>
           </div>
         )}
@@ -463,8 +463,8 @@ export default function App() {
         {selectionMode === "polygon" && !drawMode && polygon && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button onClick={clearDraw} style={{
-              background: "none", border: `1px solid ${border}`, borderRadius: 4,
-              color: "#c8d4e0", padding: "4px 10px", fontSize: 11, cursor: "pointer",
+              background: "none", border: `1px solid rgba(255,255,255,0.2)`, borderRadius: 4,
+              color: "#D1D5DB", padding: "4px 10px", fontSize: 11, cursor: "pointer",
             }}>~ Redraw</button>
             <button onClick={clearDraw} style={{
               background: "rgba(231,76,60,0.12)", border: "1px solid rgba(231,76,60,0.35)",
@@ -490,22 +490,22 @@ export default function App() {
       {/* ── Location bar ─────────────────────────────────────────── */}
       {locationLabel && (
         <div style={{
-          background: "rgba(0,180,216,0.07)", borderBottom: "1px solid rgba(0,180,216,0.15)",
+          background: "rgba(0,120,200,0.06)", borderBottom: "1px solid rgba(0,180,216,0.15)",
           padding: "5px 18px", fontSize: 11, color: accent, display: "flex", gap: 12,
         }}>
           <span style={{display:"flex",alignItems:"center",gap:5}}><svg width="8" height="10" viewBox="0 0 8 10" fill="currentColor"><path d="M4 0C2.3 0 1 1.3 1 3c0 2.5 3 6.5 3 6.5s3-4 3-6.5C7 1.3 5.7 0 4 0zm0 4.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>{locationLabel}</span>
-          <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
+          <span style={{ color: "rgba(0,120,200,0.35)" }}>·</span>
           {selectionMode === "radius" && <span>{radiusLabel} radius ·</span>}
           <span><b>{filteredCollisions.length.toLocaleString()}</b> collisions</span>
           {excludedGeoIds.size > 0 && (
             <>
-              <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
+              <span style={{ color: "rgba(0,120,200,0.35)" }}>·</span>
               <span style={{ color: "#e74c3c" }}>{excludedGeoIds.size} location{excludedGeoIds.size !== 1 ? "s" : ""} excluded</span>
             </>
           )}
           {outOfAreaIds.length > 0 && (
             <>
-              <span style={{ color: "rgba(0,180,216,0.5)" }}>·</span>
+              <span style={{ color: "rgba(0,120,200,0.35)" }}>·</span>
               <span style={{ color: "#f1c40f" }} title="Collisions outside the selected area sharing a location ID with one inside it">
                 +{outOfAreaIds.length} out-of-area (same location)
               </span>
@@ -556,7 +556,7 @@ export default function App() {
               {[["Fatal","#e74c3c"],["Non-fatal Injury","#e67e22"],["Property Damage Only","#3498db"],["Non-Reportable","#8e44ad"],["Unknown","#95a5a6"]].map(([label, color]) => (
                 <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <div style={{ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                  <span style={{ color: "#c8d4e0" }}>{label}</span>
+                  <span style={{ color: "#374151" }}>{label}</span>
                 </div>
               ))}
               <div style={{ borderTop: `1px solid ${border}`, marginTop: 6, paddingTop: 6 }}>
@@ -572,7 +572,7 @@ export default function App() {
                     <span style={{ color: "#f1c40f" }}>Outside area (same location)</span>
                   </div>
                 )}
-                <div style={{ color: "#9aa8b8", fontSize: 10 }}>
+                <div style={{ color: "#6B7280", fontSize: 10 }}>
                   {selectionMode === "radius" ? "Search point · click map to query" : "[ ] Polygon mode active"}
                 </div>
               </div>
@@ -587,12 +587,12 @@ export default function App() {
               borderRadius: 8, padding: "10px 14px", fontSize: 11,
               backdropFilter: "blur(4px)", zIndex: 1000,
             }}>
-              <div style={{ fontSize: 10, color: "#9aa8b8", letterSpacing: "0.1em", marginBottom: 8 }}>COLLISION DENSITY</div>
+              <div style={{ fontSize: 10, color: "#6B7280", letterSpacing: "0.1em", marginBottom: 8 }}>COLLISION DENSITY</div>
               <div style={{ width: 80, height: 8, borderRadius: 4, background: "linear-gradient(to right, #023e8a, #0077b6, #f1c40f, #e67e22, #e74c3c)", marginBottom: 3 }} />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#9aa8b8" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#6B7280" }}>
                 <span>Low</span><span>High</span>
               </div>
-              <div style={{ marginTop: 6, fontSize: 9, color: "#9aa8b8" }}>Fatal weighted higher</div>
+              <div style={{ marginTop: 6, fontSize: 9, color: "#6B7280" }}>Fatal weighted higher</div>
             </div>
           )}
 
@@ -603,7 +603,7 @@ export default function App() {
               transform: "translate(-50%, -50%)",
               background: "rgba(13,13,26,0.88)", border: `1px solid ${border}`,
               borderRadius: 12, padding: "18px 28px", fontSize: 13,
-              color: "#9aa8b8", textAlign: "center", pointerEvents: "none", lineHeight: 2, zIndex: 1000,
+              color: "#6B7280", textAlign: "center", pointerEvents: "none", lineHeight: 2, zIndex: 1000,
             }}>
               {selectionMode === "radius"
                 ? <>Click anywhere on the map<br />or search an address above</>
@@ -615,7 +615,7 @@ export default function App() {
 
         {/* Sidebar */}
         <aside style={{
-          width: 340, background: "#111124",
+          width: 340, background: "#F9F9F8",
           borderLeft: `1px solid ${border}`,
           padding: "14px 12px",
           overflow: "hidden",

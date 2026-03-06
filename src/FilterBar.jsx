@@ -1,5 +1,5 @@
-const accent = "#00b4d8";
-const border = "rgba(255,255,255,0.08)";
+const accent = "#0078C8";
+const border = "rgba(0,0,0,0.10)";
 
 function MultiSelect({ options, selected, onChange }) {
   return (
@@ -8,10 +8,10 @@ function MultiSelect({ options, selected, onChange }) {
         const active = selected.includes(opt);
         return (
           <button key={opt} onClick={() => onChange(active ? selected.filter(s => s !== opt) : [...selected, opt])} style={{
-            background: active ? accent : "rgba(255,255,255,0.06)",
+            background: active ? accent : "rgba(0,0,0,0.06)",
             border: `1px solid ${active ? accent : border}`,
             borderRadius: 4,
-            color: active ? "#000" : "#c8d4e0",
+            color: active ? "#000" : "#374151",
             padding: "3px 8px", fontSize: 11, cursor: "pointer",
             fontWeight: active ? 700 : 400, transition: "all 0.15s",
             fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
@@ -23,12 +23,12 @@ function MultiSelect({ options, selected, onChange }) {
 }
 
 function ToggleButton({ active, onClick, children, color }) {
-  const bg = active ? (color || accent) : "rgba(255,255,255,0.06)";
+  const bg = active ? (color || accent) : "rgba(0,0,0,0.06)";
   const bc = active ? (color || accent) : border;
   return (
     <button onClick={onClick} style={{
       background: bg, border: `1px solid ${bc}`, borderRadius: 4,
-      color: active ? "#000" : "#c8d4e0",
+      color: active ? "#000" : "#374151",
       padding: "4px 10px", fontSize: 11, cursor: "pointer",
       fontWeight: active ? 700 : 400, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
       whiteSpace: "nowrap", transition: "all 0.15s",
@@ -44,7 +44,7 @@ export default function FilterBar({
 }) {
   const S = {
     group: { display: "flex", alignItems: "flex-start", gap: 8, flexWrap: "wrap" },
-    label: { fontSize: 10, letterSpacing: "0.1em", color: "#9aa8b8", textTransform: "uppercase", whiteSpace: "nowrap", paddingTop: 4, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" },
+    label: { fontSize: 10, letterSpacing: "0.1em", color: "#6B7280", textTransform: "uppercase", whiteSpace: "nowrap", paddingTop: 4, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif" },
     divider: { width: 1, background: border, alignSelf: "stretch", margin: "0 4px" },
   };
 
@@ -91,9 +91,9 @@ export default function FilterBar({
                 const next = active ? filters.involvement.filter(v => v !== val) : [...filters.involvement, val];
                 onFiltersChange({ ...filters, involvement: next });
               }} style={{
-                background: active ? "#2ecc71" : "rgba(255,255,255,0.06)",
+                background: active ? "#2ecc71" : "rgba(0,0,0,0.06)",
                 border: `1px solid ${active ? "#2ecc71" : border}`,
-                borderRadius: 4, color: active ? "#fff" : "#c8d4e0",
+                borderRadius: 4, color: active ? "#fff" : "#374151",
                 padding: "3px 8px", fontSize: 11, cursor: "pointer",
                 fontWeight: active ? 700 : 400, transition: "all 0.15s",
                 fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
@@ -112,7 +112,7 @@ export default function FilterBar({
       {hasFilters && (
         <button onClick={() => onFiltersChange({ years: [], types: [], severity: [], involvement: [] })} style={{
           background: "none", border: `1px solid ${border}`, borderRadius: 4,
-          color: "#9aa8b8", padding: "4px 10px", fontSize: 11, cursor: "pointer",
+          color: "#6B7280", padding: "4px 10px", fontSize: 11, cursor: "pointer",
           fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif", whiteSpace: "nowrap",
         }}>✕ Clear</button>
       )}
