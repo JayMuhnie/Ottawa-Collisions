@@ -377,41 +377,44 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
   const locations = useMemo(() => {
     const map = {};
     collisions.forEach(f => {
-      const p = f.properties || {};
+      const p   = f.properties || {};
       const geo = f.geometry;
-      // Location name: trim whitespace — a bare space is as good as empty
       const locName = (p.Location || "").trim();
-      const geoId   = p.Geo_ID != null ? String(p.Geo_ID).trim() : "";
+      const geoId   = p.Geo_ID != null && String(p.Geo_ID).trim() !== ""
+        ? String(p.Geo_ID).trim() : "";
 
-      let key, name;
-      if (locName) {
-        // Normal case — has a street intersection name
-        key  = geoId || locName;
-        name = locName;
-      } else if (geoId) {
-        // Has a Geo_ID but no name — use Geo_ID as key, show coordinates if available
-        key  = geoId;
+      // Key: prefer Geo_ID (stable numeric ID) then Location name, then coordinate bucket
+      let key;
+      if (geoId)    key = `gid:${geoId}`;
+      else if (locName) key = `loc:${locName}`;
+      else {
         const coords = geo?.coordinates;
-        name = coords
-          ? `${Number(coords[1]).toFixed(5)}, ${Number(coords[0]).toFixed(5)}`
-          : `Geo_ID: ${geoId}`;
-      } else {
-        // No name and no Geo_ID — group by rounded coordinate (~10m grid) so
-        // nearby collisions at the same unnamed spot stay together rather than
-        // all merging into a single bucket.
+        key = coords
+          ? `coords:${Number(coords[1]).toFixed(4)},${Number(coords[0]).toFixed(4)}`
+          : "no-location";
+      }
+
+      if (!map[key]) {
+        map[key] = { key, name: "", geoId: geoId || null, features: [], fatal: 0, injury: 0, pdo: 0 };
+      }
+
+      // Always prefer a real Location name — update if we have one and haven't set one yet
+      if (locName && !map[key].name) {
+        map[key].name = locName;
+      }
+
+      // If still no name, fall back to coordinates or Geo_ID label
+      if (!map[key].name) {
         const coords = geo?.coordinates;
         if (coords) {
-          const lat5 = Number(coords[1]).toFixed(4);  // ~11m precision
-          const lng5 = Number(coords[0]).toFixed(4);
-          key  = `coords:${lat5},${lng5}`;
-          name = `${lat5}, ${lng5}`;
+          map[key].name = `${Number(coords[1]).toFixed(5)}, ${Number(coords[0]).toFixed(5)}`;
+        } else if (geoId) {
+          map[key].name = `Geo_ID: ${geoId}`;
         } else {
-          key  = "(No Location Data)";
-          name = "(No Location Data)";
+          map[key].name = "(No Location Data)";
         }
       }
 
-      if (!map[key]) map[key] = { key, name, geoId: geoId || null, features: [], fatal: 0, injury: 0, pdo: 0 };
       map[key].features.push(f);
       const sev = severityLabel(p.Classification_Of_Accident);
       if (sev === "Fatal") map[key].fatal++;
