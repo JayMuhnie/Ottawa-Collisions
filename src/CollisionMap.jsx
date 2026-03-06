@@ -21,6 +21,7 @@ export default function CollisionMap({
   const verticesRef = useRef([]);
   const guideLineRef = useRef(null);
   const clickTimerRef = useRef(null);
+  const markerClickedRef = useRef(false);  // true briefly after any marker click
 
   const onPolygonCompleteRef = useRef(onPolygonComplete);
   const onPolygonChangeRef = useRef(onPolygonChange);
@@ -50,6 +51,8 @@ export default function CollisionMap({
     sketchLayerRef.current = L.layerGroup().addTo(map);
 
     map.on("click", (e) => {
+      // If a marker popup just fired, ignore this map click entirely
+      if (markerClickedRef.current) { markerClickedRef.current = false; return; }
       if (!drawModeRef.current) { onMapClickRef.current(e.latlng.lat, e.latlng.lng); return; }
       if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
       const { lat, lng } = e.latlng;
@@ -299,6 +302,7 @@ export default function CollisionMap({
             <div>${p.Road_1_Surface_Condition || "N/A"}</div>
           </div>
         `);
+        marker.on("click", () => { markerClickedRef.current = true; });
         layerGroupRef.current.addLayer(marker);
       });
     }
