@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { severityLabel, collisionTypeLabel, extractYear, involvementFlags } from "./utils";
 
 // ── Constants ───────────────────────────────────────────────────────
-const SEV_ORDER   = ["Fatal", "Non-fatal Injury", "Property Damage Only", "Unknown"];
-const SEV_COLORS  = { "Fatal": "#e74c3c", "Non-fatal Injury": "#e67e22", "Property Damage Only": "#5dade2", "Unknown": "#7f8c8d" };
+const SEV_ORDER   = ["Fatal", "Non-fatal Injury", "Property Damage Only", "Non-Reportable", "Unknown"];
+const SEV_COLORS  = { "Fatal": "#e74c3c", "Non-fatal Injury": "#e67e22", "Property Damage Only": "#5dade2", "Non-Reportable": "#8e44ad", "Unknown": "#7f8c8d" };
 
 // ── Monochromatic SVG icons ──────────────────────────────────────────
 const Icon = {

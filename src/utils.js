@@ -4,6 +4,7 @@ export const SEVERITY_COLORS = {
   "Fatal": "#e74c3c",
   "Non-fatal Injury": "#e67e22",
   "Property Damage Only": "#3498db",
+  "Non-Reportable": "#8e44ad",
   "Unknown": "#95a5a6",
 };
 
@@ -157,6 +158,7 @@ export function severityLabel(val) {
   if (v.startsWith("01") || (v.includes("FATAL") && !v.includes("NON"))) return "Fatal";
   if (v.startsWith("02") || v.includes("NON-FATAL") || v.includes("NON FATAL") || v.includes("INJURY")) return "Non-fatal Injury";
   if (v.startsWith("03") || v.includes("P.D") || v.includes("PROPERTY") || v.includes("PDO")) return "Property Damage Only";
+  if (v.startsWith("04") || v.includes("NON-REPORT") || v.includes("NON REPORT") || v.includes("NONREPORT")) return "Non-Reportable";
   return "Unknown";
 }
 

@@ -67,7 +67,7 @@ export default function FilterBar({
       {/* Severity */}
       <div style={S.group}>
         <span style={S.label}>Severity</span>
-        <MultiSelect options={["Fatal", "Non-fatal Injury", "Property Damage Only"]} selected={filters.severity} onChange={v => onFiltersChange({ ...filters, severity: v })} />
+        <MultiSelect options={["Fatal", "Non-fatal Injury", "Property Damage Only", "Non-Reportable"]} selected={filters.severity} onChange={v => onFiltersChange({ ...filters, severity: v })} />
       </div>
 
       <div style={S.divider} />
