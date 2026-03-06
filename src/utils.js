@@ -255,24 +255,26 @@ export function applyFilters(features, filters) {
   });
 }
 
-// Group features by location — returns all locations sorted by count
+// Group features by named location — the single source of truth for all counts.
+// Records without a Geo_ID or Location name are silently omitted from the list
+// (they are included in collision totals but don't form their own location groups).
 export function getAllLocations(features) {
   const locationMap = {};
   features.forEach(f => {
     const p = f.properties || {};
-    const key = p.Geo_ID || p.Location;
-    if (!key) return;
+    const locName = (p.Location || "").trim();
+    const geoId   = p.Geo_ID != null && String(p.Geo_ID).trim() !== ""
+      ? String(p.Geo_ID).trim() : "";
+
+    const key = geoId ? `gid:${geoId}` : locName ? `loc:${locName}` : null;
+    if (!key) return;  // no name — skip for location grouping
+
     if (!locationMap[key]) {
-      locationMap[key] = {
-        key,
-        name: p.Location || key,
-        geoId: p.Geo_ID,
-        features: [],
-        fatal: 0,
-        injury: 0,
-        pdo: 0,
-      };
+      locationMap[key] = { key, name: locName || `Geo_ID: ${geoId}`, geoId: geoId || null, features: [], fatal: 0, injury: 0, pdo: 0 };
     }
+    // Always upgrade to a real name if one arrives
+    if (locName) locationMap[key].name = locName;
+
     locationMap[key].features.push(f);
     const sev = severityLabel(p.Classification_Of_Accident);
     if (sev === "Fatal") locationMap[key].fatal++;
@@ -281,6 +283,20 @@ export function getAllLocations(features) {
   });
   return Object.values(locationMap)
     .sort((a, b) => b.features.length - a.features.length);
+}
+
+// Count of distinct named locations — consistent across sidebar, print button, and report header
+export function namedLocationCount(features) {
+  const keys = new Set();
+  features.forEach(f => {
+    const p = f.properties || {};
+    const locName = (p.Location || "").trim();
+    const geoId   = p.Geo_ID != null && String(p.Geo_ID).trim() !== ""
+      ? String(p.Geo_ID).trim() : "";
+    if (geoId)        keys.add(`gid:${geoId}`);
+    else if (locName) keys.add(`loc:${locName}`);
+  });
+  return keys.size;
 }
 
 // Convenience: only repeat locations (2+)

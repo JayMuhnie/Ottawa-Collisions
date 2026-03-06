@@ -8,6 +8,7 @@ import {
   getUniqueYears, getUniqueTypes, applyFilters,
   pointInPolygon, polygonBbox,
   fetchCollisionsByGeoIds, mergeFeatures, buildOutOfAreaIds,
+  namedLocationCount,
 } from "./utils";
 
 const accent = "#00b4d8";
@@ -632,7 +633,7 @@ export default function App() {
             }}>
               Print Report
               <span style={{ opacity: 0.7, fontWeight: 400, fontSize: 11 }}>
-                {filteredCollisions.length} collisions · {[...new Set(filteredCollisions.map(f => f.properties?.Geo_ID || f.properties?.Location).filter(Boolean))].length} locations
+                {filteredCollisions.length} collisions · {namedLocationCount(filteredCollisions)} locations
               </span>
             </button>
           )}

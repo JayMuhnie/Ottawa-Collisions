@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { severityLabel, collisionTypeLabel, extractYear, involvementFlags } from "./utils";
+import { severityLabel, collisionTypeLabel, extractYear, involvementFlags, getAllLocations, namedLocationCount } from "./utils";
 
 // ── Constants ───────────────────────────────────────────────────────
 const SEV_ORDER   = ["Fatal", "Non-fatal Injury", "Property Damage Only", "Non-Reportable", "Unknown"];
@@ -374,57 +374,8 @@ function LocationDetail({ loc, index, globalTypes }) {
 
 // ── Main ─────────────────────────────────────────────────────────────
 export default function ReportPage({ collisions, locationLabel, boundary, onBack }) {
-  const locations = useMemo(() => {
-    const map = {};
-    collisions.forEach(f => {
-      const p   = f.properties || {};
-      const geo = f.geometry;
-      const locName = (p.Location || "").trim();
-      const geoId   = p.Geo_ID != null && String(p.Geo_ID).trim() !== ""
-        ? String(p.Geo_ID).trim() : "";
-
-      // Key: prefer Geo_ID (stable numeric ID) then Location name, then coordinate bucket
-      let key;
-      if (geoId)    key = `gid:${geoId}`;
-      else if (locName) key = `loc:${locName}`;
-      else {
-        const coords = geo?.coordinates;
-        key = coords
-          ? `coords:${Number(coords[1]).toFixed(4)},${Number(coords[0]).toFixed(4)}`
-          : "no-location";
-      }
-
-      if (!map[key]) {
-        map[key] = { key, name: "", geoId: geoId || null, features: [], fatal: 0, injury: 0, pdo: 0 };
-      }
-
-      // Always upgrade to a real Location name if we have one — overwrite placeholders
-      if (locName) {
-        map[key].name = locName;
-      } else if (!map[key].name) {
-        // No name yet — set a coordinate or Geo_ID placeholder
-        const coords = geo?.coordinates;
-        if (coords) {
-          map[key].name = `${Number(coords[1]).toFixed(5)}, ${Number(coords[0]).toFixed(5)}`;
-        } else if (geoId) {
-          map[key].name = `Geo_ID: ${geoId}`;
-        } else {
-          map[key].name = "(No Location Data)";
-        }
-      }
-
-      map[key].features.push(f);
-      const sev = severityLabel(p.Classification_Of_Accident);
-      if (sev === "Fatal") map[key].fatal++;
-      else if (sev === "Non-fatal Injury") map[key].injury++;
-      else map[key].pdo++;
-    });
-    return Object.values(map).sort((a, b) => b.features.length - a.features.length);
-  }, [collisions]);
-
-  // Data integrity: count how many collisions are in location groups vs total
+  const locations = useMemo(() => getAllLocations(collisions), [collisions]);
   const groupedCount = useMemo(() => locations.reduce((sum, l) => sum + l.features.length, 0), [locations]);
-  const ungroupedCount = collisions.length - groupedCount;  // should always be 0 now
 
   // Compute a single global type list from ALL collisions — used by every table
   const globalTypes = useMemo(() => getTypes(collisions), [collisions]);
@@ -536,10 +487,12 @@ export default function ReportPage({ collisions, locationLabel, boundary, onBack
           </div>
 
           {/* Data integrity notice */}
-          <div style={{ marginTop: 14, fontSize: 11, color: groupedCount === collisions.length ? "#2ecc71" : "#e67e22" }}>
-            {groupedCount === collisions.length
-              ? `All ${collisions.length} records accounted for across ${locations.length} location${locations.length !== 1 ? "s" : ""}`
-              : `Warning: ${collisions.length} total records · ${groupedCount} grouped into ${locations.length} locations · ${ungroupedCount} without location data`}
+          <div style={{ marginTop: 14, fontSize: 11, color: "#7a8fa8" }}>
+            {collisions.length} collision{collisions.length !== 1 ? "s" : ""} across {locations.length} named location{locations.length !== 1 ? "s" : ""}
+            {groupedCount < collisions.length && (
+              <span style={{ color: "#e67e22" }}> · {collisions.length - groupedCount} without location data (included in totals only)</span>
+            )}
+          </div>
           </div>
         </div>
 
