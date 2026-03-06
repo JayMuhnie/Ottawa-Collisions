@@ -8,10 +8,10 @@ function MultiSelect({ options, selected, onChange }) {
         const active = selected.includes(opt);
         return (
           <button key={opt} onClick={() => onChange(active ? selected.filter(s => s !== opt) : [...selected, opt])} style={{
-            background: active ? accent : "rgba(0,0,0,0.06)",
+            background: active ? accent : "#F3F4F6",
             border: `1px solid ${active ? accent : border}`,
             borderRadius: 4,
-            color: active ? "#000" : "#374151",
+            color: active ? "#fff" : "#374151",
             padding: "3px 8px", fontSize: 11, cursor: "pointer",
             fontWeight: active ? 700 : 400, transition: "all 0.15s",
             fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
@@ -23,12 +23,12 @@ function MultiSelect({ options, selected, onChange }) {
 }
 
 function ToggleButton({ active, onClick, children, color }) {
-  const bg = active ? (color || accent) : "rgba(0,0,0,0.06)";
+  const bg = active ? (color || accent) : "#F3F4F6";
   const bc = active ? (color || accent) : border;
   return (
     <button onClick={onClick} style={{
       background: bg, border: `1px solid ${bc}`, borderRadius: 4,
-      color: active ? "#000" : "#374151",
+      color: active ? "#fff" : "#374151",
       padding: "4px 10px", fontSize: 11, cursor: "pointer",
       fontWeight: active ? 700 : 400, fontFamily: "'Franklin Gothic Book', 'Franklin Gothic Medium', 'ITC Franklin Gothic', 'Arial Narrow', Arial, sans-serif",
       whiteSpace: "nowrap", transition: "all 0.15s",
@@ -52,7 +52,7 @@ export default function FilterBar({
 
   return (
     <div style={{
-      background: "#0e0e20", borderBottom: `1px solid ${border}`,
+      background: "#FFFFFF", borderBottom: `1px solid rgba(0,0,0,0.10)`,
       padding: "8px 18px", display: "flex", alignItems: "center",
       gap: 16, flexWrap: "wrap", flexShrink: 0,
     }}>
