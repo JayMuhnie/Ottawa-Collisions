@@ -69,3 +69,13 @@ vite.config.js
 netlify.toml
 package.json
 ```
+
+
+## Data and basemap
+
+- **Data:** City of Ottawa "Traffic Collisions by Location 2017-2024 (excluding 2023)" ArcGIS layer, reached through the proxy in
+  `functions/api/collisions.js` (Cloudflare) / `netlify/functions/arcgis-proxy.js` (Netlify). If the service is renamed again, update
+  `ARCGIS_BASE` in both files.
+- **Basemap:** by default the app uses keyless OpenStreetMap tiles restyled dark. For the original CARTO Dark Matter look, get a free
+  key at https://www.carto.com/basemaps/apikey/ and set `VITE_CARTO_KEY` as a build environment variable
+  (Cloudflare Pages: Settings > Variables and Secrets), then redeploy.

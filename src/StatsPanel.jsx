@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { SEVERITY_COLORS, CHART_PALETTE, severityLabel, collisionTypeLabel, extractYear, getAllLocations, exportToCSV, involvementFlags } from "./utils";
+import { SEVERITY_COLORS, CHART_PALETTE, severityLabel, collisionTypeLabel, extractYear, getAllLocations, exportToCSV, involvementFlags, environmentCondition } from "./utils";
 import RepeatLocations from "./RepeatLocations";
 
 const S = {
@@ -122,7 +122,7 @@ export default function StatsPanel({ collisions, allCollisions, loading, onHighl
   // Weather
   const envCounts = {};
   props.forEach((p) => {
-    const raw = p.Environment_Condition_1;
+    const raw = environmentCondition(p);
     if (raw) {
       const label = String(raw).replace(/^\d+\s*-\s*/, "").trim();
       if (label) envCounts[label] = (envCounts[label] || 0) + 1;

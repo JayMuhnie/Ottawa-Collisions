@@ -1,5 +1,7 @@
+// Netlify Function: proxies queries to the City of Ottawa collisions layer.
+// Keep ARCGIS_BASE in sync with functions/api/collisions.js.
 const ARCGIS_BASE =
-  "https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Collisions/FeatureServer/0/query";
+  "https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Traffic_Collisions_by_Location_2017-2024_(excluding_2023)/FeatureServer/0/query";
 
 exports.handler = async function (event) {
   const params = new URLSearchParams(event.queryStringParameters || {});
@@ -10,9 +12,9 @@ exports.handler = async function (event) {
     const body = await response.text();
 
     return {
-      statusCode: 200,
+      statusCode: response.status,
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": response.headers.get("Content-Type") || "application/json",
         "Access-Control-Allow-Origin": "*",
       },
       body,
@@ -21,7 +23,7 @@ exports.handler = async function (event) {
     return {
       statusCode: 502,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: { message: err.message } }),
     };
   }
 };

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
-import { OTTAWA_CENTER, SEVERITY_COLORS, severityLabel, collisionTypeLabel, getLatLng, involvementLabel } from "./utils";
+import { OTTAWA_CENTER, SEVERITY_COLORS, severityLabel, collisionTypeLabel, getLatLng, involvementLabel, environmentCondition } from "./utils";
 
 export default function CollisionMap({
   collisions, onMapClick, searchMarker, radiusKm,
@@ -40,9 +40,20 @@ export default function CollisionMap({
       zoom: 13,
       doubleClickZoom: false,
     });
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: "© OpenStreetMap © CARTO", maxZoom: 19,
-    }).addTo(map);
+    // CARTO's free tiles now require an API key. If VITE_CARTO_KEY is set at build time we
+    // use CARTO Dark Matter; otherwise we fall back to keyless OpenStreetMap tiles, which
+    // index.css restyles dark (.osm-dark-tiles).
+    const cartoKey = import.meta.env.VITE_CARTO_KEY;
+    if (cartoKey) {
+      L.tileLayer(
+        `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`,
+        { attribution: "© OpenStreetMap contributors © CARTO", maxZoom: 19 }
+      ).addTo(map);
+    } else {
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors", maxZoom: 19, className: "osm-dark-tiles",
+      }).addTo(map);
+    }
 
     layerGroupRef.current = L.layerGroup().addTo(map);
     searchLayerRef.current = L.layerGroup().addTo(map);
@@ -307,7 +318,7 @@ export default function CollisionMap({
             <div>${p.Location || "N/A"}</div>
             <div>${collisionTypeLabel(p.Initial_Impact_Type)}</div>
             ${involveLine}
-            <div>${p.Environment_Condition_1 || "N/A"}</div>
+            <div>${environmentCondition(p) || "N/A"}</div>
             <div>${p.Road_1_Surface_Condition || "N/A"}</div>
           </div>
         `);

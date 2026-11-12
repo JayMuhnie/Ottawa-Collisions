@@ -15,6 +15,64 @@ export const CHART_PALETTE = [
 
 const PROXY = "/api/collisions";
 
+// The service caps how many records one request returns (about 1,000). We ask for
+// more and keep paging while the server says there are further results.
+const PAGE_SIZE = 2000;
+const MAX_PAGES = 10;
+
+// Parse a proxy response, turning non-JSON replies (e.g. a plain-text "Bad Request"
+// from ArcGIS when the service is missing or renamed) into a readable error.
+async function parseArcgisResponse(res) {
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    const snippet = text.replace(/\s+/g, " ").trim().slice(0, 120);
+    throw new Error(`Data service returned an unexpected response (HTTP ${res.status}): ${snippet || "empty"}`);
+  }
+  if (data.error) {
+    throw new Error(data.error.message || JSON.stringify(data.error));
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return data;
+}
+
+// Make sure every feature has WGS84 [lng, lat] geometry. If the geometry is missing or
+// looks projected (Web Mercator values are far outside +/-180), rebuild it from the
+// layer's own Lat / Long attributes.
+function normalizeFeature(f) {
+  const c = f?.geometry?.coordinates;
+  const valid = Array.isArray(c) && c.length >= 2 &&
+    Math.abs(c[0]) <= 180 && Math.abs(c[1]) <= 90;
+  if (valid) return f;
+  const p = f?.properties || {};
+  const lat = parseFloat(p.Lat);
+  const lng = parseFloat(p.Long);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return { ...f, geometry: { type: "Point", coordinates: [lng, lat] } };
+  }
+  return f;
+}
+
+// Run one query, following pagination until the server reports no more results.
+async function queryCollisions(baseParams) {
+  const all = [];
+  let offset = 0;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const params = new URLSearchParams(baseParams);
+    if (offset > 0) params.set("resultOffset", String(offset));
+    const res = await fetch(`${PROXY}?${params.toString()}`);
+    const data = await parseArcgisResponse(res);
+    const feats = data.features || [];
+    all.push(...feats);
+    const more = data.exceededTransferLimit || data.properties?.exceededTransferLimit;
+    if (!more || feats.length === 0) break;
+    offset += feats.length;
+  }
+  return all.map(normalizeFeature);
+}
+
 export async function fetchCollisionsNear(lat, lng, km) {
   const radiusDeg = km / 111;
   const xmin = lng - radiusDeg;
@@ -26,24 +84,18 @@ export async function fetchCollisionsNear(lat, lng, km) {
 
 // Fetch collisions within a bounding box (used by both radius and polygon modes)
 export async function fetchCollisionsInBbox(xmin, ymin, xmax, ymax) {
-  const params = new URLSearchParams({
+  return queryCollisions({
     where: "1=1",
     geometry: `${xmin},${ymin},${xmax},${ymax}`,
     geometryType: "esriGeometryEnvelope",
     inSR: "4326",
     spatialRel: "esriSpatialRelIntersects",
     outFields: "*",
-    resultRecordCount: "2000",
+    resultRecordCount: String(PAGE_SIZE),
     returnGeometry: "true",
     outSR: "4326",
     f: "geojson",
   });
-  const res = await fetch(`${PROXY}?${params.toString()}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const text = await res.text();
-  const data = JSON.parse(text);
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  return data.features || [];
 }
 
 // Fetch all collisions citywide that share a Geo_ID with any feature in the given set.
@@ -57,34 +109,18 @@ export async function fetchCollisionsByGeoIds(geoIds) {
     chunks.push(geoIds.slice(i, i + CHUNK));
   }
 
-  const results = await Promise.all(chunks.map(async (chunk) => {
-    // Geo_ID can be numeric or string — try numeric first (no quotes), fall back to string
-    const numericIds = chunk.filter(id => !isNaN(Number(id)));
-    const stringIds = chunk.filter(id => isNaN(Number(id)));
-
-    let whereClause;
-    if (numericIds.length > 0 && stringIds.length === 0) {
-      whereClause = `Geo_ID IN (${numericIds.map(Number).join(",")})`;
-    } else if (stringIds.length > 0 && numericIds.length === 0) {
-      whereClause = `Geo_ID IN (${stringIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(",")})`;
-    } else {
-      // Mixed — use string form for all
-      whereClause = `Geo_ID IN (${chunk.map(id => `'${String(id).replace(/'/g, "''")}'`).join(",")})`;
-    }
-
-    const params = new URLSearchParams({
-      where: whereClause,
+  const results = await Promise.all(chunks.map((chunk) => {
+    // Geo_ID is a text field with leading zeros ("0002250") and alphanumeric
+    // values ("__3Z094A"), so every ID must be sent as a quoted string.
+    const list = chunk.map(id => `'${String(id).replace(/'/g, "''")}'`).join(",");
+    return queryCollisions({
+      where: `Geo_ID IN (${list})`,
       outFields: "*",
-      resultRecordCount: "2000",
+      resultRecordCount: String(PAGE_SIZE),
       returnGeometry: "true",
       outSR: "4326",
       f: "geojson",
     });
-    const res = await fetch(`${PROXY}?${params.toString()}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = JSON.parse(await res.text());
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    return data.features || [];
   }));
 
   return results.flat();
@@ -216,10 +252,22 @@ export function getUniqueTypes(features) {
 }
 
 // Check if a collision involves a pedestrian or cyclist
+// Find a property by case-insensitive pattern (field naming has varied between releases)
+function findCount(props, exact, loose) {
+  const keys = Object.keys(props || {});
+  const key = keys.find(k => exact.test(k)) || keys.find(k => loose.test(k));
+  return key ? parseInt(props[key]) : NaN;
+}
+
 export function involvementFlags(props) {
-  const ped = parseInt(props.num_of_pedestrians) > 0;
-  const cyc = parseInt(props.num_of_bicycles) > 0;
+  const ped = findCount(props, /^num_?of_?pedestrians?$/i, /pedestrian/i) > 0;
+  const cyc = findCount(props, /^num_?of_?(bicycles?|cyclists?)$/i, /bicycl|cyclist/i) > 0;
   return { ped, cyc };
+}
+
+// The weather/environment field was renamed from Environment_Condition_1 to Environment_Condition
+export function environmentCondition(props) {
+  return props?.Environment_Condition ?? props?.Environment_Condition_1 ?? null;
 }
 
 export function involvementLabel(props) {
