@@ -79,3 +79,8 @@ package.json
 - **Basemap:** by default the app uses keyless OpenStreetMap tiles restyled dark. For the original CARTO Dark Matter look, get a free
   key at https://www.carto.com/basemaps/apikey/ and set `VITE_CARTO_KEY` as a build environment variable
   (Cloudflare Pages: Settings > Variables and Secrets), then redeploy.
+
+## Tests
+`npm test` runs 85 checks of the selection and export logic against a simulated ArcGIS server and an independent
+"answer key" (different math from the app): radius (true circle), polygon (as drawn on the map), same-Geo_ID
+out-of-area records, filters, location exclusion, nearby-match, paging beyond 10,000 records, and CSV contents.

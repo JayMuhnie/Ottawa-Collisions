@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
-import { OTTAWA_CENTER, SEVERITY_COLORS, severityLabel, collisionTypeLabel, getLatLng, involvementLabel, environmentCondition } from "./utils";
+import { OTTAWA_CENTER, SEVERITY_COLORS, severityLabel, collisionTypeLabel, getLatLng, involvementLabel, environmentCondition, featureKey } from "./utils";
 
 export default function CollisionMap({
   collisions, onMapClick, searchMarker, radiusKm,
   showHeatmap, highlightGeoId,
   drawMode, onPolygonComplete, polygon, onPolygonChange,
-  outOfAreaIds,
+  outOfAreaIds, highlightIds,
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -277,7 +277,7 @@ export default function CollisionMap({
         const hasPed = involvement?.includes("Pedestrian");
         const hasCyc = involvement?.includes("Cyclist");
         const isOutOfArea = outOfAreaIds?.size > 0 &&
-          outOfAreaIds.has(String(p.OBJECTID ?? p.objectid ?? p.ObjectID ?? p.ObjectId));
+          outOfAreaIds.has(featureKey(feature));
 
         let marker;
         if (hasPed || hasCyc) {
@@ -332,11 +332,8 @@ export default function CollisionMap({
   useEffect(() => {
     if (!highlightLayerRef.current) return;
     highlightLayerRef.current.clearLayers();
-    if (!highlightGeoId || !mapRef.current) return;
-    const matching = collisions.filter(f => {
-      const p = f.properties || {};
-      return p.Geo_ID === highlightGeoId || p.Location === highlightGeoId;
-    });
+    if (!highlightIds || highlightIds.size === 0 || !mapRef.current) return;
+    const matching = collisions.filter(f => highlightIds.has(featureKey(f)));
     matching.forEach(f => {
       const pos = getLatLng(f);
       if (!pos) return;
@@ -350,7 +347,7 @@ export default function CollisionMap({
       const pos = getLatLng(matching[0]);
       if (pos) mapRef.current.setView([pos.lat, pos.lng], 16, { animate: true });
     }
-  }, [highlightGeoId, collisions]);
+  }, [highlightIds, collisions]);
 
   // ── Search marker + radius circle ─────────────────────────────────
   useEffect(() => {

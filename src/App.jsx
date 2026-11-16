@@ -1,15 +1,13 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import CollisionMap from "./CollisionMap";
 import StatsPanel from "./StatsPanel";
 import FilterBar from "./FilterBar";
 import ReportPage from "./ReportPage";
 import {
-  fetchCollisionsNear, fetchCollisionsInBbox, geocodeAddress,
-  getUniqueYears, getUniqueTypes, applyFilters,
-  pointInPolygon, polygonBbox,
-  fetchCollisionsByGeoIds, mergeFeatures, buildOutOfAreaIds,
-  namedLocationCount,
+  geocodeAddress, getUniqueYears, getUniqueTypes,
+  namedLocationCount, locationFeatureKeys, normalizeLocationKey,
 } from "./utils";
+import { selectInRadius, selectInPolygon, visibleCollisions, makeLatestGuard, outOfAreaKeys } from "./selection";
 
 const accent = "#00b4d8";
 const border = "rgba(255,255,255,0.08)";
@@ -45,101 +43,88 @@ export default function App() {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [highlightGeoId, setHighlightGeoId] = useState(null);
   const [filters, setFilters] = useState({ years: [], types: [], severity: [], involvement: [] });
-  const [outOfAreaIds, setOutOfAreaIds] = useState([]);
   const [excludedGeoIds, setExcludedGeoIds] = useState(new Set());
   const [showReport, setShowReport] = useState(false);
   const [savedMsg, setSavedMsg] = useState(""); // "" | "saved" | "loaded" | "error"
 
   const allYears = useMemo(() => getUniqueYears(collisions), [collisions]);
   const allTypes = useMemo(() => getUniqueTypes(collisions), [collisions]);
-  const filteredCollisions = useMemo(() => {
-    const filtered = applyFilters(collisions, filters);
-    if (excludedGeoIds.size === 0) return filtered;
-    return filtered.filter(f => {
-      const p = f.properties || {};
-      const key = p.Geo_ID || p.Location;
-      return !excludedGeoIds.has(key);
-    });
-  }, [collisions, filters, excludedGeoIds]);
+  const filteredCollisions = useMemo(
+    () => visibleCollisions(collisions, filters, excludedGeoIds),
+    [collisions, filters, excludedGeoIds]
+  );
+  const boundary = useMemo(
+    () => selectionMode === "radius" && searchMarker
+      ? { type: "radius", lat: searchMarker.lat, lng: searchMarker.lng, radiusKm }
+      : selectionMode === "polygon" && polygon
+      ? { type: "polygon", vertices: polygon }
+      : null,
+    [selectionMode, searchMarker, radiusKm, polygon]
+  );
+  // Out-of-area = shown on the map but outside the boundary that is drawn right now.
+  const outOfAreaSet = useMemo(() => outOfAreaKeys(collisions, boundary), [collisions, boundary]);
+  const highlightIds = useMemo(
+    () => (highlightGeoId ? locationFeatureKeys(collisions, highlightGeoId) : null),
+    [collisions, highlightGeoId]
+  );
+  const latestRef = useRef(makeLatestGuard());
 
   const resetState = () => {
     setFilters({ years: [], types: [], severity: [], involvement: [] });
     setHighlightGeoId(null);
-    setOutOfAreaIds([]);
     setExcludedGeoIds(new Set());
   };
 
-  // After a spatial query, fetch any out-of-area collisions that share a Geo_ID
-  // with something already in the result set, then merge them in.
-  const expandWithSameLocations = useCallback(async (spatialFeatures) => {
-    const geoIds = [...new Set(
-      spatialFeatures.map(f => f.properties?.Geo_ID).filter(id => id != null && id !== "")
-    )];
-    if (geoIds.length === 0) return { features: spatialFeatures, outOfAreaIds: new Set() };
-    const extra = await fetchCollisionsByGeoIds(geoIds);
-    const outOfAreaIds = buildOutOfAreaIds(spatialFeatures, extra);
-    const merged = mergeFeatures(spatialFeatures, extra);
-    return { features: merged, outOfAreaIds };
-  }, []);
-
   // ── Load via radius ───────────────────────────────────────────────
   const loadCollisions = useCallback(async (lat, lng, km, restore = null) => {
+    const isCurrent = latestRef.current();
     setLoading(true);
     setError(null);
     if (restore) {
       // Restoring from saved settings — apply saved state instead of resetting
       setFilters(restore.filters || { years: [], types: [], severity: [], involvement: [] });
-      setExcludedGeoIds(new Set(restore.excludedGeoIds || []));
+      setExcludedGeoIds(new Set((restore.excludedGeoIds || []).map(normalizeLocationKey)));
       setHighlightGeoId(null);
-      setOutOfAreaIds([]);
     } else {
       resetState();
     }
     try {
-      const spatial = await fetchCollisionsNear(lat, lng, km);
-      const { features, outOfAreaIds } = await expandWithSameLocations(spatial);
+      const { features } = await selectInRadius(lat, lng, km);
+      if (!isCurrent()) return;
       setCollisions(features);
-      setOutOfAreaIds(outOfAreaIds);
     } catch (err) {
+      if (!isCurrent()) return;
       setError(`Failed to load data: ${err.message}`);
       setCollisions([]);
-      setOutOfAreaIds([]);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [expandWithSameLocations]); // eslint-disable-line
+  }, []); // eslint-disable-line
 
   // ── Load via polygon ──────────────────────────────────────────────
   const loadCollisionsInPolygon = useCallback(async (poly, restore = null) => {
+    const isCurrent = latestRef.current();
     setLoading(true);
     setError(null);
     if (restore) {
       setFilters(restore.filters || { years: [], types: [], severity: [], involvement: [] });
-      setExcludedGeoIds(new Set(restore.excludedGeoIds || []));
+      setExcludedGeoIds(new Set((restore.excludedGeoIds || []).map(normalizeLocationKey)));
       setHighlightGeoId(null);
-      setOutOfAreaIds([]);
     } else {
       resetState();
     }
     try {
-      const { minLat, maxLat, minLng, maxLng } = polygonBbox(poly);
-      const bbox = await fetchCollisionsInBbox(minLng, minLat, maxLng, maxLat);
-      const spatial = bbox.filter(f => {
-        const coords = f.geometry?.coordinates;
-        if (!coords) return false;
-        return pointInPolygon([coords[1], coords[0]], poly);
-      });
-      const { features, outOfAreaIds } = await expandWithSameLocations(spatial);
+      const { features } = await selectInPolygon(poly);
+      if (!isCurrent()) return;
       setCollisions(features);
-      setOutOfAreaIds(outOfAreaIds);
     } catch (err) {
+      if (!isCurrent()) return;
       setError(`Failed to load data: ${err.message}`);
       setCollisions([]);
-      setOutOfAreaIds([]);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [expandWithSameLocations]); // eslint-disable-line
+  }, []); // eslint-disable-line
 
   // ── Save / load settings ─────────────────────────────────────────
   const saveSettings = useCallback(() => {
@@ -205,7 +190,7 @@ export default function App() {
           } else {
             // No boundary — just restore filters/exclusions to current data
             if (s.filters) setFilters(s.filters);
-            if (s.excludedGeoIds) setExcludedGeoIds(new Set(s.excludedGeoIds));
+            if (s.excludedGeoIds) setExcludedGeoIds(new Set(s.excludedGeoIds.map(normalizeLocationKey)));
           }
           setSavedMsg("loaded");
           setTimeout(() => setSavedMsg(""), 2000);
@@ -314,12 +299,6 @@ export default function App() {
     document.documentElement.style.overflow = "auto";
     document.getElementById("root").style.overflow = "auto";
     document.getElementById("root").style.height = "auto";
-
-    const boundary = selectionMode === "radius" && searchMarker
-      ? { type: "radius", lat: searchMarker.lat, lng: searchMarker.lng, radiusKm }
-      : selectionMode === "polygon" && polygon
-      ? { type: "polygon", vertices: polygon }
-      : null;
 
     return (
       <ReportPage
@@ -503,11 +482,11 @@ export default function App() {
               <span style={{ color: "#e74c3c" }}>{excludedGeoIds.size} location{excludedGeoIds.size !== 1 ? "s" : ""} excluded</span>
             </>
           )}
-          {outOfAreaIds.length > 0 && (
+          {outOfAreaSet.size > 0 && (
             <>
               <span style={{ color: "rgba(0,120,200,0.4)" }}>·</span>
               <span style={{ color: "#f1c40f" }} title="Collisions outside the selected area sharing a location ID with one inside it">
-                +{outOfAreaIds.length} out-of-area (same location)
+                +{outOfAreaSet.size} out-of-area (same location)
               </span>
             </>
           )}
@@ -542,7 +521,8 @@ export default function App() {
             onPolygonComplete={handlePolygonComplete}
             onPolygonChange={handlePolygonChange}
             polygon={selectionMode === "polygon" ? polygon : null}
-            outOfAreaIds={new Set(outOfAreaIds)}
+            outOfAreaIds={outOfAreaSet}
+            highlightIds={highlightIds}
           />
 
           {/* Dot legend */}
@@ -566,7 +546,7 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                   <svg width="14" height="11" viewBox="0 0 14 11" fill="none" stroke="#2ecc71" strokeWidth="1.2" strokeLinecap="round" style={{display:"inline",verticalAlign:"middle",marginRight:6}}><circle cx="2.5" cy="8" r="2.5"/><circle cx="11.5" cy="8" r="2.5"/><path d="M2.5 8 L5 4 L8 5.5 L6 2.5 L9 2.5" strokeWidth="1.1"/><path d="M9 2.5 L11.5 8"/><circle cx="9" cy="2" r="0.9" fill="#2ecc71" stroke="none"/></svg><span style={{ color: "#2ecc71" }}>Cyclist involved</span>
                 </div>
-                {outOfAreaIds.length > 0 && (
+                {outOfAreaSet.size > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                     <div style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px dashed #f1c40f", flexShrink: 0, opacity: 0.7 }} />
                     <span style={{ color: "#f1c40f" }}>Outside area (same location)</span>
@@ -645,13 +625,7 @@ export default function App() {
             highlightGeoId={highlightGeoId}
             excludedGeoIds={excludedGeoIds}
             onExcludedChange={setExcludedGeoIds}
-            boundary={
-              selectionMode === "radius" && searchMarker
-                ? { type: "radius", lat: searchMarker.lat, lng: searchMarker.lng, radiusKm }
-                : selectionMode === "polygon" && polygon
-                ? { type: "polygon", vertices: polygon }
-                : null
-            }
+            boundary={boundary}
           />
         </aside>
       </div>

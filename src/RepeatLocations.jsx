@@ -26,7 +26,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
 
         {/* Include/exclude toggle */}
         <button
-          onClick={(e) => { e.stopPropagation(); onToggleExclude(loc.geoId || loc.key); }}
+          onClick={(e) => { e.stopPropagation(); onToggleExclude(loc.key); }}
           title={isExcluded ? "Click to include this location" : "Click to exclude this location"}
           style={{
             width: 16, height: 16,
@@ -53,7 +53,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
 
         {/* Count badge */}
         <div
-          onClick={() => { onHighlight(isHighlighted ? null : (loc.geoId || loc.key)); if (isRepeat) setExpanded(e => !e); }}
+          onClick={() => { onHighlight(isHighlighted ? null : (loc.key)); if (isRepeat) setExpanded(e => !e); }}
           style={{
             background: loc.fatal > 0 ? "#e74c3c" : loc.injury > 0 ? "#e67e22" : isRepeat ? "#3498db" : "rgba(255,255,255,0.1)",
             borderRadius: 4, padding: "2px 7px",
@@ -67,7 +67,7 @@ function LocationCard({ loc, i, isHighlighted, onHighlight, isExcluded, onToggle
 
         {/* Location name */}
         <div
-          onClick={() => { onHighlight(isHighlighted ? null : (loc.geoId || loc.key)); if (isRepeat) setExpanded(e => !e); }}
+          onClick={() => { onHighlight(isHighlighted ? null : (loc.key)); if (isRepeat) setExpanded(e => !e); }}
           style={{ fontSize: 11, color: "#dce4f0", flex: 1, lineHeight: 1.4, cursor: "pointer" }}
         >
           {loc.name.replace(/\s*\([^)]*\)\s*$/, "")}
@@ -129,8 +129,8 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
 
   // Excluded locations sink to the bottom
   const displayed = [
-    ...base.filter(l => !excludedGeoIds.has(l.geoId || l.key)),
-    ...base.filter(l => excludedGeoIds.has(l.geoId || l.key)),
+    ...base.filter(l => !excludedGeoIds.has(l.key)),
+    ...base.filter(l => excludedGeoIds.has(l.key)),
   ];
 
   const repeatCount = allLocations.filter(l => l.features.length > 1).length;
@@ -145,7 +145,7 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
 
   const handleSelectAll = () => onExcludedChange(new Set());
   const handleDeselectAll = () => {
-    const allKeys = new Set(allLocations.map(l => l.geoId || l.key));
+    const allKeys = new Set(allLocations.map(l => l.key));
     onExcludedChange(allKeys);
   };
 
@@ -198,9 +198,9 @@ export default function RepeatLocations({ allLocations, onHighlight, highlighted
               key={loc.key}
               loc={loc}
               i={i}
-              isHighlighted={highlightedGeoId === (loc.geoId || loc.key)}
+              isHighlighted={highlightedGeoId === (loc.key)}
               onHighlight={onHighlight}
-              isExcluded={excludedGeoIds.has(loc.geoId || loc.key)}
+              isExcluded={excludedGeoIds.has(loc.key)}
               onToggleExclude={handleToggleExclude}
             />
           ))

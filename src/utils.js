@@ -15,10 +15,11 @@ export const CHART_PALETTE = [
 
 const PROXY = "/api/collisions";
 
-// The service caps how many records one request returns (about 1,000). We ask for
-// more and keep paging while the server says there are further results.
+// The service caps how many records one request returns (about 1,000). We keep paging until the
+// server says there is nothing more. MAX_PAGES is only a runaway guard: hitting it is an ERROR, never a
+// silent truncation, because a silently incomplete result set would look like a valid one.
 const PAGE_SIZE = 2000;
-const MAX_PAGES = 10;
+const MAX_PAGES = 500;
 
 // Parse a proxy response, turning non-JSON replies (e.g. a plain-text "Bad Request"
 // from ArcGIS when the service is missing or renamed) into a readable error.
@@ -56,30 +57,52 @@ function normalizeFeature(f) {
 }
 
 // Run one query, following pagination until the server reports no more results.
+// Rows are ordered by OBJECTID so that resultOffset paging is stable (without an explicit order the
+// service may return pages in a different order each time, which can skip or repeat rows).
 async function queryCollisions(baseParams) {
-  const all = [];
+  const byKey = new Map();
   let offset = 0;
-  for (let page = 0; page < MAX_PAGES; page++) {
+  for (let page = 0; ; page++) {
+    if (page >= MAX_PAGES) {
+      throw new Error("The selection returned too many records to load safely. Please choose a smaller area.");
+    }
     const params = new URLSearchParams(baseParams);
+    params.set("orderByFields", "OBJECTID");
     if (offset > 0) params.set("resultOffset", String(offset));
     const res = await fetch(`${PROXY}?${params.toString()}`);
     const data = await parseArcgisResponse(res);
     const feats = data.features || [];
-    all.push(...feats);
+    feats.forEach(f => byKey.set(featureKey(f), f));
     const more = data.exceededTransferLimit || data.properties?.exceededTransferLimit;
     if (!more || feats.length === 0) break;
     offset += feats.length;
   }
-  return all.map(normalizeFeature);
+  return [...byKey.values()].map(normalizeFeature);
 }
 
+// Same sphere Leaflet uses to draw L.circle, so "inside the circle on screen" == "selected".
+const EARTH_R = 6371000;
+const rad = (d) => (d * Math.PI) / 180;
+
+export function distanceM(lat1, lng1, lat2, lng2) {
+  return haversineM([lat1, lng1], [lat2, lng2]);
+}
+
+// Fetch every collision whose location is within `km` of (lat, lng).
+// The service is queried with a box that fully contains the circle (the box is wider in degrees of
+// longitude than latitude, by 1/cos(lat)), then points are kept only if they are truly inside the circle.
 export async function fetchCollisionsNear(lat, lng, km) {
-  const radiusDeg = km / 111;
-  const xmin = lng - radiusDeg;
-  const ymin = lat - radiusDeg;
-  const xmax = lng + radiusDeg;
-  const ymax = lat + radiusDeg;
-  return fetchCollisionsInBbox(xmin, ymin, xmax, ymax);
+  const meters = km * 1000;
+  const delta = meters / EARTH_R;                                   // angular radius (radians)
+  const dLat = (delta * 180) / Math.PI;
+  const ratio = Math.sin(delta) / Math.cos(rad(lat));
+  const dLng = ratio >= 1 ? 180 : (Math.asin(ratio) * 180) / Math.PI;   // exact max longitude reach of the circle
+  const pad = 1e-6;
+  const box = await fetchCollisionsInBbox(lng - dLng - pad, lat - dLat - pad, lng + dLng + pad, lat + dLat + pad);
+  return box.filter(f => {
+    const c = f.geometry?.coordinates;
+    return c && distanceM(lat, lng, c[1], c[0]) <= meters;
+  });
 }
 
 // Fetch collisions within a bounding box (used by both radius and polygon modes)
@@ -126,42 +149,53 @@ export async function fetchCollisionsByGeoIds(geoIds) {
   return results.flat();
 }
 
-// Get the OBJECTID from a feature regardless of casing
-function getObjectId(f) {
-  const p = f.properties || {};
-  return p.OBJECTID ?? p.objectid ?? p.ObjectID ?? p.ObjectId;
+// Stable identity for a record. Prefers OBJECTID (any casing), then the GeoJSON feature id, then the
+// layer's own ID field; only as a last resort falls back to position + date so that records are never
+// all collapsed into one "undefined" key.
+export function featureKey(f) {
+  const p = f?.properties || {};
+  const id = p.OBJECTID ?? p.objectid ?? p.ObjectID ?? p.ObjectId ?? f?.id ?? p.ID;
+  if (id != null && id !== "") return String(id);
+  const c = f?.geometry?.coordinates || [];
+  return `pos:${c[0]},${c[1]}|${p.Accident_Date ?? ""}|${p.Classification_Of_Accident ?? ""}`;
 }
 
 // Merge two feature arrays, deduplicating by OBJECTID
 export function mergeFeatures(primary, extra) {
-  const seen = new Set(primary.map(f => String(getObjectId(f))));
-  const unique = extra.filter(f => !seen.has(String(getObjectId(f))));
+  const seen = new Set(primary.map(f => featureKey(f)));
+  const unique = extra.filter(f => !seen.has(featureKey(f)));
   return [...primary, ...unique];
 }
 
 // Build an array of out-of-area OBJECTIDs (as strings): those in extra that aren't in primary
 export function buildOutOfAreaIds(primary, extra) {
-  const spatialIds = new Set(primary.map(f => String(getObjectId(f))));
+  const spatialIds = new Set(primary.map(f => featureKey(f)));
   return extra
-    .filter(f => !spatialIds.has(String(getObjectId(f))))
-    .map(f => String(getObjectId(f)));
+    .filter(f => !spatialIds.has(featureKey(f)))
+    .map(f => featureKey(f));
 }
 // polygon: [[lat, lng], ...], point: [lat, lng]
+// Leaflet draws polygon edges as straight lines on the Web Mercator map, so the inside/outside test
+// is done in that same space (a straight edge is NOT straight in raw lat/lng). Even-odd rule, which is
+// also how Leaflet fills a polygon, so a self-crossing outline selects what it visibly shades.
+function mercatorXY(lat, lng) {
+  const phi = rad(Math.max(-89.9, Math.min(89.9, lat)));
+  return [6378137 * rad(lng), 6378137 * Math.log(Math.tan(Math.PI / 4 + phi / 2))];
+}
+
 export function pointInPolygon(point, polygon) {
-  const [py, px] = point;
+  if (!polygon || polygon.length < 3) return false;
+  const [px, py] = mercatorXY(point[0], point[1]);
+  const V = polygon.map(([la, ln]) => mercatorXY(la, ln));
   let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [iy, ix] = polygon[i];
-    const [jy, jx] = polygon[j];
-    const intersect =
-      iy > py !== jy > py &&
-      px < ((jx - ix) * (py - iy)) / (jy - iy) + ix;
-    if (intersect) inside = !inside;
+  for (let i = 0, j = V.length - 1; i < V.length; j = i++) {
+    const [ix, iy] = V[i];
+    const [jx, jy] = V[j];
+    if ((iy > py) !== (jy > py) && px < ((jx - ix) * (py - iy)) / (jy - iy) + ix) inside = !inside;
   }
   return inside;
 }
 
-// Get bounding box of a polygon [[lat,lng],...]
 export function polygonBbox(polygon) {
   let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
   polygon.forEach(([lat, lng]) => {
@@ -324,6 +358,20 @@ function centroid(features) {
   return n ? [latSum / n, lngSum / n] : null;
 }
 
+// The one canonical location key. Grouping (Locations tab / report), exclusion and highlight all use
+// it, so a checkbox, a highlight and the map can never disagree about which records belong together.
+export function ownLocationKey(p) {
+  const locName = String(p?.Location ?? "").trim();
+  const geoId = p?.Geo_ID != null ? String(p.Geo_ID).trim() : "";
+  return geoId ? `gid:${geoId}` : locName ? `loc:${locName}` : null;
+}
+
+// Settings files saved by older versions stored plain Geo_IDs; give them the canonical prefix.
+export function normalizeLocationKey(k) {
+  const t = String(k);
+  return t.startsWith("gid:") || t.startsWith("loc:") ? t : `gid:${t}`;
+}
+
 // Group features by named location — the single source of truth for all counts.
 // Unnamed records (no Geo_ID, no Location) are proximity-snapped to the closest
 // named location within SNAP_M metres. If nothing is within range they are omitted
@@ -337,11 +385,11 @@ export function getAllLocations(features) {
   // ── Pass 1: build named location groups ──────────────────────────
   features.forEach(f => {
     const p = f.properties || {};
-    const locName = (p.Location || "").trim();
+    const locName = String(p.Location ?? "").trim();
     const geoId   = p.Geo_ID != null && String(p.Geo_ID).trim() !== ""
       ? String(p.Geo_ID).trim() : "";
 
-    const key = geoId ? `gid:${geoId}` : locName ? `loc:${locName}` : null;
+    const key = ownLocationKey(p);
     if (!key) { unnamed.push(f); return; }
 
     if (!locationMap[key]) {
@@ -392,16 +440,29 @@ export function getAllLocations(features) {
     .sort((a, b) => b.features.length - a.features.length);
 }
 
+
+// Keys (featureKey) of every record belonging to any of the given locations, INCLUDING records that
+// were attached to the location by the nearby-match rule.
+export function featureKeysInLocations(features, locationKeys) {
+  const out = new Set();
+  if (!locationKeys || locationKeys.size === 0) return out;
+  getAllLocations(features).forEach(loc => {
+    if (locationKeys.has(loc.key)) loc.features.forEach(f => out.add(featureKey(f)));
+  });
+  return out;
+}
+
+// Same, for a single location (used to highlight a location on the map)
+export function locationFeatureKeys(features, locationKey) {
+  return featureKeysInLocations(features, new Set([locationKey]));
+}
+
 // Count of distinct named locations — consistent across sidebar, print button, and report header
 export function namedLocationCount(features) {
   const keys = new Set();
   features.forEach(f => {
-    const p = f.properties || {};
-    const locName = (p.Location || "").trim();
-    const geoId   = p.Geo_ID != null && String(p.Geo_ID).trim() !== ""
-      ? String(p.Geo_ID).trim() : "";
-    if (geoId)        keys.add(`gid:${geoId}`);
-    else if (locName) keys.add(`loc:${locName}`);
+    const k = ownLocationKey(f.properties || {});
+    if (k) keys.add(k);
   });
   return keys.size;
 }
@@ -412,10 +473,8 @@ export function getRepeatLocations(features) {
 }
 
 // Export all raw API fields as-is
-export function exportToCSV(features, filename = "ottawa-collisions.csv") {
-  if (!features.length) return;
-
-  // Collect every property key across all features, preserving first-seen order
+// Build CSV text for the given records: one row per record, every property column across all records.
+export function buildCSV(features) {
   const rawKeys = [];
   const seenKeys = new Set();
   features.forEach(f => {
@@ -427,21 +486,46 @@ export function exportToCSV(features, filename = "ottawa-collisions.csv") {
   const escapeCell = (v) => {
     if (v === null || v === undefined) return "";
     const s = String(v);
-    return s.includes(",") || s.includes('"') || s.includes("\n")
-      ? `"${s.replace(/"/g, '""')}"` : s;
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
 
   const rows = features.map(f => {
     const p = f.properties || {};
     return rawKeys.map(k => escapeCell(p[k])).join(",");
   });
+  return [rawKeys.join(","), ...rows].join("\n");
+}
 
-  const csv = [rawKeys.join(","), ...rows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+// Ask the user where to save the CSV (a "Save as" dialog) when the browser supports it
+// (Chrome, Edge, Opera). Other browsers (Safari, Firefox) can't show that dialog from a web page, so
+// they fall back to a normal download into the Downloads folder (unless the browser is set to
+// "ask where to save each file"). Returns "saved", "cancelled" or "downloaded".
+export async function exportToCSV(features, filename = "ottawa-collisions.csv") {
+  if (!features.length) return "cancelled";
+  // The leading BOM makes Excel read accented street names (e.g. French names) correctly.
+  const blob = new Blob(["\uFEFF" + buildCSV(features)], { type: "text/csv;charset=utf-8;" });
+
+  if (typeof window !== "undefined" && typeof window.showSaveFilePicker === "function") {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: "CSV file", accept: { "text/csv": [".csv"] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return "saved";
+    } catch (err) {
+      if (err && err.name === "AbortError") return "cancelled";   // user closed the dialog: do nothing
+      // anything else (e.g. blocked inside an iframe): fall through to a normal download
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return "downloaded";
 }
